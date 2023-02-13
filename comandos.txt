@@ -1,0 +1,187 @@
+MKDISK
+    >size
+    -fit
+        BF
+        FF
+        WF
+    -unit
+        k
+        m 
+    -path
+        ruta
+        "ruta con espacios"
+RMDISK
+    >path
+FDISK
+    >size
+    >unit
+        b 
+        k
+        m 
+    >path
+    >type
+        P 
+        E  
+        L
+    >fit 
+        BestFit
+        FirstFit
+        WorstFit
+    >delete
+        full
+    >name
+    >add
+MOUNT
+    >path
+    >name
+UNMOUNT
+    >id
+MKFS
+    >id
+    >type
+        full
+    >fs
+        2fs
+        3fs
+LOGIN
+    >user
+    >pass
+    >id
+LOGOUT
+MKGRP
+    >name
+RMGRP
+    >name
+MKUSR
+    >user
+    >pass
+    >grp
+RMUSR
+    >user
+CHMOD
+    >path
+    >ugo
+    >r 
+MKFILE
+    >path
+    >r
+    >size
+    >cont
+CAT
+    >fileN
+REMOVE
+    >path
+EDIT
+    >path
+    >cont
+RENAME
+    >path
+    >name
+MKDIR
+    >path
+    >r 
+COPY
+    >path
+    >destino
+MOVE
+    >path
+    >destino
+FIND
+    ?
+    *
+    >path
+    >name
+CHOWN
+    >path
+    >r 
+    >user
+CHGRP
+    >user
+    >grp
+PAUSE
+RECOVERY
+    >id 
+LOSS
+    >id
+SCRIPT (no es comando)
+    *.eea
+EXECUTE
+    >path
+REP
+    >name
+        mbr
+        disk
+        inode
+        journaling
+        block
+        bm_inode
+        bm_block
+        tree
+        sb
+        file
+        ls 
+    >path
+    >id
+    >ruta
+
+
+----------------------------------------------------------------------------
+COMANDOS: 29
+
+MKDISK
+RMDISK
+FDISK
+MOUNT
+UNMOUNT
+MKFS
+LOGIN
+LOGOUT
+MKGRP
+RMGRP
+MKUSR
+RMUSR
+CHMOD
+MKFILE
+CAT
+REMOVE
+EDIT
+RENAME
+MKDIR
+COPY
+MOVE
+FIND
+CHOWN
+CHGRP
+PAUSE
+RECOVERY
+LOSS
+EXECUTE
+REP
+
+------------------------------------------------------------------------------------
+SINTAXIS
+
+comando >parametro=valor >parametro="valor 2" >parametro=valor3
+comando >parametro=valor
+comando
+comando >parametro
+
+______________________________________
+
+
+
+hola >amiguitos=como >se=encuentral >el >dia="de hoy" >mis="panas rabitses je je"
+
+____________________________________________
+
+#Crea un disco de 3000 Kb en la carpeta home
+mkdisk >size=3000 >unit=K >path=/home/user/Disco1.dsk
+
+#No es necesario utilizar comillas para la ruta en este caso ya que la ruta no tiene ningún espacio en blanco
+mkdisk >path=/home/user/Disco2.dsk >unit=K >size=3000
+
+#Se ponen comillas la ruta de path ya que uno de sus elementos tiene espacios en  blanco, se crea si no está o no existe
+mkdisk >size=5 >unit=M >path="/home/mis discos/Disco3.dsk"
+
+#Creará un disco de 10 Mb ya que no hay parámetro unit
+mkdisk >size=10 >path=”/home/mis discos/Disco4.dsk"
