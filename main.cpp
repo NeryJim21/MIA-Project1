@@ -28,7 +28,7 @@ struct Partition{
 //Estructura MBR
 struct MBR{
     int mbr_tamano;
-    char mbr_fecha_creacion;
+    char mbr_fecha_creacion[80];
     int mbr_dsk_signature;
     char dsk_fit[1];
     Partition mbr_partition_1;
@@ -191,9 +191,9 @@ void ejecutar(string entrada, Map& parametros){
     //Opciones de comandos
     if(entrada == "MKDISK"){
         cout<<"MKDISK"<<endl;
-        //commandMkdisk(parametros);
+        commandMkdisk(parametros);
     }else if(entrada == "RMDISK"){
-        //commandRmdisk(parametros);
+        commandRmdisk(parametros);
     }else if(entrada == "FDISK"){
         cout<<"FDISK"<<endl;
     }else if(entrada == "MOUNT"){
@@ -302,5 +302,167 @@ void commandExecute(Map& parametros){
             pivEntrada = "";
         }
         i++;
+    }
+}
+
+//Comando para crear discos binarios
+template<typename Map>
+void commandMkdisk(Map& parametros){
+    //Variables para parametros
+    string path, pivP,pivF,fit;
+    char unit;
+    int size;
+    bool alerta, dk = false;
+    MBR disco;
+
+    //Valida que los parametros estén correctos
+    for(auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "PATH"){
+            cout<<"Archivo ubicado: "<<p.second<<endl;
+            path = p.second;
+        }
+        else if(pivP == "SIZE"){
+            cout<<"Tamano disco: "<<p.second<<endl;
+            size = stoi(p.second);
+        }
+        else if(pivP == "UNIT"){
+            cout<<"Unidades: "<<p.second<<endl;
+            pivF = mayusculas(p.second);
+            unit = pivF[0];
+        }
+        else if(pivP == "FIT"){
+            cout<<"Ajuste: "<<p.second<<endl;
+            pivF = mayusculas(p.second);
+            fit = pivF[0];
+        }
+        else{
+            cout<<"parametro incorrecto"<<pivP<<endl;
+            alerta = true;
+        }
+    }
+
+    //Tomando hora del sistema
+    time_t now = time(NULL);
+    struct tm *ts;
+    char buf[80];
+    ts = localtime(&now);
+    strftime(disco.mbr_fecha_creacion,sizeof(disco.mbr_fecha_creacion), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+
+    //Tamaño disco
+    if(unit == 'K'){//Opcionales
+        size = size *1024;
+    }
+    else if(unit == 'M' || unit == NULL){
+        size = size *1024*1024;
+    }
+    else{
+        cout<<"unidades erroneas"<<endl;
+        alerta = true;
+    }
+    disco.mbr_tamano = size;
+    disco.mbr_dsk_signature = rand(); //Numero random
+    
+    //Ajuste disco
+    if(fit == ""){
+        fit = "F";
+    }
+    if(fit != "W" && fit != "B" && fit != "F"){
+        cout<<"Ajuste incorrecto"<<endl;
+        alerta = true;
+    }
+    else{
+        strcpy(disco.dsk_fit,fit.c_str());
+    }
+    cout<<"Fit: "<<fit<<endl;
+
+    //Creando disco
+    FILE * disk;
+    if(disk = fopen(path.c_str(),"r")){
+        fclose(disk);
+    }
+    else{
+        if(path != "" && size > 0 && alerta != true){
+            disk = fopen(path.c_str(),"wb");
+            cout<<"Disco creado con exito"<<endl;
+            cout<<"\n--------------------------- M B R -----------------------\n"<<endl;
+            cout<<"Tamaño: "<<disco.mbr_tamano<<endl;
+            cout<<"Fecha: "<<disco.mbr_fecha_creacion<<endl;
+            cout<<"Ajuste: "<<disco.dsk_fit<<endl;
+            cout<<"\n----------------------------------------------------------\n"<<endl;
+            dk = true;
+            if(disk == NULL){
+                cout<<"Error en la creación de disco"<<endl;
+            }
+            fclose(disk);
+        }
+        else{
+            if(alerta != true){
+                cout<<"Parametros insuficientes"<<endl;
+            }
+        }
+    }
+
+    //Llenando disco
+    if(dk != false){
+        disk = fopen(path.c_str(),"a+");
+        char buffer = '0';
+        fwrite(&disco,sizeof(disco),1,disk);
+        for(int i = 0; i<disco.mbr_tamano;i++){
+            fwrite(&buffer,sizeof(char),1,disk);
+        }
+        fclose(disk);
+    }
+}
+
+//Comando RMDISK
+template<typename Map>
+void commandRmdisk(Map& parametros){
+    string path,pivP;
+    bool bandera = false;
+
+    for (auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "PATH"){
+            cout<<"Archivo ubicado: "<<p.second<<endl;
+            path= p.second;
+        }else{
+            cout<<"Parametros incorrectos"<<endl;
+            bandera = true;
+        }
+    }
+
+    if(path != ""){
+        FILE *dsk = fopen(path.c_str(),"rb");
+        if(dsk != NULL){
+            char conf;
+            int rm = 0;
+            cout<<"¿Desea eliminar el disco?"<<endl;
+            cout<<"S/N"<<endl;
+            cin>>conf;
+
+            if(conf == 'N' || conf == 'n'){
+                bandera = true;
+            }
+            if(conf == 'S' || conf == 's'){
+                rm = remove(path.c_str());
+                cout<<"Borrando el disco"<<endl;
+                bandera = false;
+            }
+            else{
+                cout<<"Opción inválida"<<endl;
+                bandera = true;
+            }
+
+            if(rm != 0 && bandera != false){
+                cout<<"\n Error al borrar disco"<<endl;
+            }
+        }
+        else{
+            cout<<"Disco no encontrado"<<endl;
+        }  
+    }
+    else{
+        cout<<"Parametros incorrectos"<<endl;
     }
 }

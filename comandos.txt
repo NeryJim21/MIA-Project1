@@ -175,7 +175,7 @@ hola >amiguitos=como >se=encuentral >el >dia="de hoy" >mis="panas rabitses je je
 ____________________________________________
 
 #Crea un disco de 3000 Kb en la carpeta home
-mkdisk >size=3000 >unit=K >path=/home/user/Disco1.dsk
+mkdisk >size=3000 >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
 
 #No es necesario utilizar comillas para la ruta en este caso ya que la ruta no tiene ningún espacio en blanco
 mkdisk >path=/home/user/Disco2.dsk >unit=K >size=3000
@@ -185,3 +185,9 @@ mkdisk >size=5 >unit=M >path="/home/mis discos/Disco3.dsk"
 
 #Creará un disco de 10 Mb ya que no hay parámetro unit
 mkdisk >size=10 >path=”/home/mis discos/Disco4.dsk"
+
+____________________________________________
+
+mkdisk >size=3000 >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
+
+rmdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
