@@ -466,3 +466,168 @@ void commandRmdisk(Map& parametros){
         cout<<"Parametros incorrectos"<<endl;
     }
 }
+
+//Comando FDISK
+template<typename Map>
+void commandFdisk(Map& parametros){
+    //Variables parametros
+    string unit, path, tipo, fit, name, eliminaP, pivP, pivF;
+    int size, add;
+    bool alerta = false;
+    Partition ptn;
+
+    //Valida que los parametros estén correctos
+    for(auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "PATH"){
+            cout<<"Archivo ubicado: "<<p.second<<endl;
+            path = p.second;
+        }
+        else if(pivP == "SIZE"){
+            cout<<"Tamano disco: "<<p.second<<endl;
+            size = stoi(p.second);
+        }
+        else if(pivP == "UNIT"){
+            cout<<"Unidades: "<<p.second<<endl;
+            pivF = mayusculas(p.second);
+            unit = pivF[0];
+        }
+        else if(pivP == "FIT"){
+            cout<<"Ajuste: "<<p.second<<endl;
+            pivF = mayusculas(p.second);
+            fit = pivF[0];
+        }
+        else if(pivP == "TYPE"){
+            cout<<"Tipo: "<<p.second<<endl;
+            pivF = mayusculas(p.second);
+            tipo = pivF[0];
+        }
+        else if(pivP == "DELETE"){
+            cout<<"Eliminar partición:  "<<p.second<<endl;
+            pivF = mayusculas(p.second);
+            eliminaP = pivF; //FULL
+        }
+        else if(pivP == "NAME"){
+            cout<<"Nombre de partición: "<<p.second<<endl;
+            name = p.second;
+        }
+        else if(pivP == "ADD"){
+            cout<<"Modificar tamaño: "<<p.second<<endl;
+            add = stoi(p.second); //Pendiente valores negativos
+        }
+        else{
+            cout<<"Parametro incorrecto"<<pivP<<endl;
+            alerta = true;
+        }
+    }
+
+    //Tamaño partition
+    if(unit == "B"){
+    }
+    if(unit == "K" || unit == NULL){//Opcionales
+        size = size*1024*1024;
+    }
+    else{
+        cout<<"Unidades erroneas"<<endl;
+        alerta = true;
+    }
+
+    //Tipo partition
+    if(tipo == "P"){
+        cout<<"Primaria"<<endl;
+    }
+    else if(tipo == "E"){
+        coutt<<"Extendida"<<endl;
+    }
+    else if(tipo == "L"){
+        coutt<<"Logica"<<endl;
+    }
+    else{
+        cout<<"Tipo de partición Erróneo"<<endl;
+        alerta = true;
+    }
+
+    //Ajuste partition
+    if(fit == ""){
+        fit = "W";
+    }
+    if(fit != "W" && fit != "B" && fit != "F"){
+        cout<<"Ajuste incorrecto"<<endl;
+        alerta = true;
+    }
+    else{
+        strcpy(disco.dsk_fit,fit.c_str());
+    }
+    cout<<"Fit: "<<fit<<endl;
+
+    FILE * disk;
+    if(disk = fopen(path.c_str(),"r")){
+        fclose(disk);
+    }
+    else{
+        cout<<"Disco no existente"<<endl;
+        aletra = true;
+    }
+
+    //Creando partition
+    if(alerta != true){ //No hay ningún tipo de error en parametros
+        strcpy(ptn.part_type,tipo.c_str());
+        strcpy(ptn.part_fit,fit.c_str());
+        strcpy(ptn.part_name,name.c_str());
+        ptn.part_start=0;
+        ptn.part_status = 'N';
+        if(size >0){
+            ptn.part_s = size;
+        }
+
+        //Abriendo MBR disco
+        MBR disco;
+        int pivPartition, pivIndice; //indica que partición está libre
+        if(disk = fopen(path.c_str(),"rb")){
+            while(!feof(disk)){
+                fread(&disco,sizeof(MBR),1,disk);
+                //Busca partición libre
+                if(disco.mbr_partition_1 == NULL){
+                    pivPartition = 1;
+                }
+                else{
+                    if(disco.mbr_partition_2 == NULL){   
+                        pivPartition = 2;
+                    }
+                    else{
+                        if(disco.mbr_partition_3 == NULL){   
+                            pivPartition = 2;
+                        }
+                        else{
+                            if(disco.mbr_partition_4 == NULL){   
+                                pivPartition = 4;
+                            }
+                        }
+                    }
+                }
+            }
+            fclose(disk);
+            //Agregando partition a MBR
+            switch(pivPartition){
+                case 1:
+                    cout<<"Partition 1"<<endl;
+
+                    break;
+                case 2:
+                    cout<<"Partition 2"<<endl;
+                    break;
+                case 3:
+                    cout<<"Partition 3"<<endl;
+                    break;
+                case 4:
+                    cout<<"Partition 4"<<endl;
+                    break;
+                default:
+                    break;
+            }
+        }
+        else{
+            cout<<"Error de lectura disco"<<endl;
+        }
+    }
+}
