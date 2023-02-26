@@ -38,12 +38,12 @@ struct MBR{
 };
 //Estructura EBR
 struct EBR{
-    char part_status;
-    char part_fit;
+    char part_status[1];
+    char part_fit[1];
     int part_start;
     int part_s;
     int part_next;
-    int part_name[16];
+    char part_name[16];
 };
 
 //Prototipo de funciones
@@ -64,6 +64,8 @@ void commandFdisk(Map& parametros);
 void makePrimary(string path,Partition ptn);
 bool partitionFull(string path);
 bool namePartition(string path, string name);
+void makeExtended(string path, Partition ptn);
+bool findingExtended(string path);
 
 
 int main(){
@@ -564,6 +566,14 @@ void commandFdisk(Map& parametros){
         alerta = true;
     }
 
+    //Validamos que no exista partition extendida
+    if(tipo == "E"){
+        if(findingExtended(path) == true){
+            alerta = true;
+            cout<<"Ya existe una partición extendida..."<<endl;
+        }
+    }
+
     //Ajuste partition
     if(fit == ""){
         fit = "W";
@@ -610,6 +620,8 @@ void commandFdisk(Map& parametros){
         //Enviamos la información hacia el tipo de particion
         if(tipo=="P"){
             makePrimary(path, ptn);
+        }else if(tipo == "E"){
+            makeExtended(path,ptn);
         }
 
         
@@ -700,6 +712,101 @@ bool namePartition(string path, string name){
         fread(&dataMBR,sizeof(MBR),1,disk);
         if(dataMBR.mbr_partition_1.part_name != name && dataMBR.mbr_partition_2.part_name != name
         && dataMBR.mbr_partition_3.part_name != name && dataMBR.mbr_partition_4.part_name != name){
+            fclose(disk);
+            return false;
+        }else{
+            fclose(disk);
+            return true;
+        }
+    }
+}
+
+//Función para crear particiones extendidas
+void makeExtended(string path, Partition ptn){
+    MBR dataMBR;
+    int pivSize = 0;
+    int contPartition = 0;
+    bool extendida = false;
+    //Obteniendo tamaño del MBR
+    pivSize = sizeof(MBR)+1;
+    //Buscando partición libre
+    FILE * disk;
+    disk = fopen(path.c_str(),"rb+");
+    if(disk == NULL){
+        cout<<"Error al abrir el disco..."<<endl;
+    }
+    else{
+        //Nos ponemos al principio del disco
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMBR,sizeof(MBR),1,disk);
+        //Buscando partición libre
+        int partition = 0;
+        if(dataMBR.mbr_partition_1.part_status[0] == '-'){
+            partition = 1;
+        }else if(dataMBR.mbr_partition_2.part_status[0] == '-'){
+            partition = 2;
+        }else if(dataMBR.mbr_partition_3.part_status[0] == '-'){
+            partition = 3;
+        }else if(dataMBR.mbr_partition_4.part_status[0] == '-'){
+            partition = 4;
+        }
+        cout<<"Particion libre"<<partition<<endl;
+        //Primera partición en el disco
+        if(partition == 1){
+            pivSize += ptn.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_1 = ptn;
+        }else if(partition == 2){
+            pivSize += dataMBR.mbr_partition_1.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_2 = ptn;
+        }else if(partition == 3){
+            pivSize += dataMBR.mbr_partition_1.part_s + dataMBR.mbr_partition_2.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_3 = ptn;
+        }else if(partition == 4){
+            pivSize += dataMBR.mbr_partition_1.part_s + dataMBR.mbr_partition_2.part_s + dataMBR.mbr_partition_3.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_4 = ptn;
+        }
+        
+        //Actualizando MBR
+        fseek(disk,0,SEEK_SET);
+        fwrite(&dataMBR,sizeof(dataMBR),1,disk);
+        cout<<"MBR actualizado..."<<endl;
+
+        //Creando EBR inicial
+        EBR dataEBR;
+        string statusEbr = "-";
+        string fit = ptn.part_fit;
+        int size = ptn.part_s;
+        string name = ptn.part_name;
+        strcpy(dataEBR.part_status,statusEbr.c_str());
+        strcpy(dataEBR.part_name,name.c_str());
+        strcpy(dataEBR.part_fit,fit.c_str());
+        dataEBR.part_start = pivSize;
+        dataEBR.part_s = size;
+        dataEBR.part_next = -1;
+        
+        //Escribiendo EBR en el disco
+        pivSize ++;
+        fseek(disk,pivSize,SEEK_SET);
+        fwrite(&dataEBR,sizeof(dataEBR),1,disk);
+        cout<<"EBR actualizado..."<<endl;
+        fclose(disk);
+
+    }
+}
+
+//Función para validar si existe partición extendida
+bool findingExtended(string path){
+    FILE * disk;
+    if(disk = fopen(path.c_str(),"r")){
+        MBR dataMBR;
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMBR,sizeof(MBR),1,disk);
+        if(dataMBR.mbr_partition_1.part_type[0] != 'E' && dataMBR.mbr_partition_2.part_type[0] != 'E'
+        && dataMBR.mbr_partition_3.part_type[0] != 'E' && dataMBR.mbr_partition_4.part_type[0] != 'E'){
             fclose(disk);
             return false;
         }else{
