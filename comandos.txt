@@ -191,3 +191,5 @@ ____________________________________________
 mkdisk >size=3000 >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
 
 rmdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
+
+fdisk >size=300 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Particion1

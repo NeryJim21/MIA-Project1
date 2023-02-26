@@ -61,6 +61,9 @@ template<typename Map>
 void commandRmdisk(Map& parametros);
 template<typename Map>
 void commandFdisk(Map& parametros);
+void makePrimary(string path,Partition ptn);
+bool partitionFull(string path);
+bool namePartition(string path, string name);
 
 
 int main(){
@@ -196,6 +199,7 @@ void ejecutar(string entrada, Map& parametros){
         commandRmdisk(parametros);
     }else if(entrada == "FDISK"){
         cout<<"FDISK"<<endl;
+        commandFdisk(parametros);
     }else if(entrada == "MOUNT"){
         cout<<"MOUNT"<<endl;
     }else if(entrada == "UNMOUNT"){
@@ -375,7 +379,14 @@ void commandMkdisk(Map& parametros){
         strcpy(disco.dsk_fit,fit.c_str());
     }
     cout<<"Fit: "<<fit<<endl;
-
+    
+    //Inicializando particiones en -1
+    string partStatus = "-";
+    strcpy(disco.mbr_partition_1.part_status,partStatus.c_str());
+    strcpy(disco.mbr_partition_2.part_status,partStatus.c_str());
+    strcpy(disco.mbr_partition_3.part_status,partStatus.c_str());
+    strcpy(disco.mbr_partition_4.part_status,partStatus.c_str());
+    
     //Creando disco
     FILE * disk;
     if(disk = fopen(path.c_str(),"r")){
@@ -472,11 +483,10 @@ template<typename Map>
 void commandFdisk(Map& parametros){
     //Variables parametros
     string unit, path, tipo, fit, name, eliminaP, pivP, pivF;
-    int size, add;
+    int size = 0, add = 0;
     bool alerta = false;
-    Partition ptn;
 
-    //Valida que los parametros estén correctos
+    //Obtiene valor de parámetros y verifica que sean los correspondientes al comando
     for(auto& p: parametros){
         pivP = mayusculas(p.first);
         if(pivP == "PATH"){
@@ -521,10 +531,23 @@ void commandFdisk(Map& parametros){
         }
     }
 
-    //Tamaño partition
+    //Validamos que los valores de los parámetros sean correctos
+    //Validamos que el size sea positivo y mayor a cero
+    if(size<0){
+        cout<<"Parametro SIZE debe ser mayor a cero"<<endl;
+        alerta = true;
+    }
+    if(size == 0){
+        cout<<"Size = 0"<<endl;
+    }
+
+    //Validamos el tamaño de la particion
     if(unit == "B"){
     }
-    if(unit == "K" || unit == NULL){//Opcionales
+    if(unit == "K" || unit == ""){//Opcionales
+        size = size*1024;
+    }
+    else if(unit == "M"){
         size = size*1024*1024;
     }
     else{
@@ -533,16 +556,10 @@ void commandFdisk(Map& parametros){
     }
 
     //Tipo partition
-    if(tipo == "P"){
-        cout<<"Primaria"<<endl;
+    if(tipo == ""){
+        tipo = "P";
     }
-    else if(tipo == "E"){
-        coutt<<"Extendida"<<endl;
-    }
-    else if(tipo == "L"){
-        coutt<<"Logica"<<endl;
-    }
-    else{
+    if(tipo != "P" && tipo != "L" && tipo != "E"){
         cout<<"Tipo de partición Erróneo"<<endl;
         alerta = true;
     }
@@ -555,79 +572,139 @@ void commandFdisk(Map& parametros){
         cout<<"Ajuste incorrecto"<<endl;
         alerta = true;
     }
-    else{
-        strcpy(disco.dsk_fit,fit.c_str());
-    }
-    cout<<"Fit: "<<fit<<endl;
 
+    //Verificamos que el disco a modificar exista
     FILE * disk;
     if(disk = fopen(path.c_str(),"r")){
         fclose(disk);
     }
     else{
         cout<<"Disco no existente"<<endl;
-        aletra = true;
+        alerta = true;
+    }
+
+    //Veliricamos si las particiones aún no están llenas
+    if(partitionFull(path) == true){
+        alerta = true;
+        cout<<"Particiones llenas"<<endl;
+    }
+
+    //Verificamos que el nombre no esté repetido
+    if(namePartition(path,name) == true){
+        alerta = true;
+        cout<<"El nombre:"<<name<<" ya ha sido ingresado a las particiones."<<endl;
     }
 
     //Creando partition
     if(alerta != true){ //No hay ningún tipo de error en parametros
+        Partition ptn;  
+        string status = "0";
+        //Agregando valores a struct partition
+        strcpy(ptn.part_status,status.c_str()); //-:libre, 0:ocupado, 1: montado
         strcpy(ptn.part_type,tipo.c_str());
         strcpy(ptn.part_fit,fit.c_str());
         strcpy(ptn.part_name,name.c_str());
-        ptn.part_start=0;
-        ptn.part_status = 'N';
         if(size >0){
             ptn.part_s = size;
         }
-
-        //Abriendo MBR disco
-        MBR disco;
-        int pivPartition, pivIndice; //indica que partición está libre
-        if(disk = fopen(path.c_str(),"rb")){
-            while(!feof(disk)){
-                fread(&disco,sizeof(MBR),1,disk);
-                //Busca partición libre
-                if(disco.mbr_partition_1 == NULL){
-                    pivPartition = 1;
-                }
-                else{
-                    if(disco.mbr_partition_2 == NULL){   
-                        pivPartition = 2;
-                    }
-                    else{
-                        if(disco.mbr_partition_3 == NULL){   
-                            pivPartition = 2;
-                        }
-                        else{
-                            if(disco.mbr_partition_4 == NULL){   
-                                pivPartition = 4;
-                            }
-                        }
-                    }
-                }
-            }
-            fclose(disk);
-            //Agregando partition a MBR
-            switch(pivPartition){
-                case 1:
-                    cout<<"Partition 1"<<endl;
-
-                    break;
-                case 2:
-                    cout<<"Partition 2"<<endl;
-                    break;
-                case 3:
-                    cout<<"Partition 3"<<endl;
-                    break;
-                case 4:
-                    cout<<"Partition 4"<<endl;
-                    break;
-                default:
-                    break;
-            }
+        //Enviamos la información hacia el tipo de particion
+        if(tipo=="P"){
+            makePrimary(path, ptn);
         }
-        else{
-            cout<<"Error de lectura disco"<<endl;
+
+        
+    }else{
+        cout<<"Error: La partición no ha sido creada"<<endl;
+    }
+}
+
+//Función para crear particiones primarias
+void makePrimary(string path, Partition ptn){
+    MBR dataMBR;
+    int pivSize = 0;
+    //Obteniendo tamaño del MBR
+    pivSize = sizeof(MBR)+1;
+    //Buscando partición libre
+    FILE * disk;
+    disk = fopen(path.c_str(),"rb+");
+    if(disk == NULL){
+        cout<<"Error al abrir el disco..."<<endl;
+    }
+    else{
+        //Nos ponemos al principio del disco
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMBR,sizeof(MBR),1,disk);
+        //Buscando partición libre
+        int partition = 0;
+        if(dataMBR.mbr_partition_1.part_status[0] == '-'){
+            partition = 1;
+        }else if(dataMBR.mbr_partition_2.part_status[0] == '-'){
+            partition = 2;
+        }else if(dataMBR.mbr_partition_3.part_status[0] == '-'){
+            partition = 3;
+        }else if(dataMBR.mbr_partition_4.part_status[0] == '-'){
+            partition = 4;
+        }
+        cout<<"Particion libre"<<partition<<endl;
+        //Primera partición en el disco
+        if(partition == 1){
+            pivSize += ptn.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_1 = ptn;
+        }else if(partition == 2){
+            pivSize += dataMBR.mbr_partition_1.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_2 = ptn;
+        }else if(partition == 3){
+            pivSize += dataMBR.mbr_partition_1.part_s + dataMBR.mbr_partition_2.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_3 = ptn;
+        }else if(partition == 4){
+            pivSize += dataMBR.mbr_partition_1.part_s + dataMBR.mbr_partition_2.part_s + dataMBR.mbr_partition_3.part_s;
+            ptn.part_start = pivSize;
+            dataMBR.mbr_partition_4 = ptn;
+        }
+        //Actualizando MBR
+        fseek(disk,0,SEEK_SET);
+        fwrite(&dataMBR,sizeof(dataMBR),1,disk);
+        fclose(disk);
+        cout<<"MBR actualizado..."<<endl;
+    }
+
+}
+
+//Función para validar si las particiones están llenas
+bool partitionFull(string path){
+    FILE * disk;
+    if(disk = fopen(path.c_str(),"r")){
+        MBR dataMbr;
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMbr,sizeof(MBR),1,disk);
+        if(dataMbr.mbr_partition_1.part_status[0] == '-' || dataMbr.mbr_partition_2.part_status[0] == '-'
+        || dataMbr.mbr_partition_3.part_status[0] == '-' || dataMbr.mbr_partition_4.part_status[0] == '-'){
+            fclose(disk);
+            return false;
+        }else{
+            fclose(disk);
+            return true;
+        }
+    }
+}
+
+//Función para validar que el nombre de partición no se repita
+bool namePartition(string path, string name){
+    FILE * disk;
+    if(disk = fopen(path.c_str(),"r")){
+        MBR dataMBR;
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMBR,sizeof(MBR),1,disk);
+        if(dataMBR.mbr_partition_1.part_name != name && dataMBR.mbr_partition_2.part_name != name
+        && dataMBR.mbr_partition_3.part_name != name && dataMBR.mbr_partition_4.part_name != name){
+            fclose(disk);
+            return false;
+        }else{
+            fclose(disk);
+            return true;
         }
     }
 }
