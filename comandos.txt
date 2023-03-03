@@ -188,8 +188,12 @@ mkdisk >size=10 >path=”/home/mis discos/Disco4.dsk"
 
 ____________________________________________
 
-mkdisk >size=3000 >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
+mkdisk >size=10 >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
 
 rmdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
 
-fdisk >size=300 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Particion1
+fdisk >size=3 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Primary
+
+fdisk >type=E >size=3 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Extended
+
+fdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >type=L >size=1 >name=Logic

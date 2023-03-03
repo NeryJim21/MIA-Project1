@@ -66,6 +66,7 @@ bool partitionFull(string path);
 bool namePartition(string path, string name);
 void makeExtended(string path, Partition ptn);
 bool findingExtended(string path);
+void makeLogic(string path, EBR ebr);
 
 
 int main(){
@@ -574,6 +575,14 @@ void commandFdisk(Map& parametros){
         }
     }
 
+    //Si viene type L, validamos que sí exista partición extendida
+    if(tipo == "L"){
+        if(findingExtended(path) != true){
+            alerta = true;
+            cout<<"No existe partición extendida para escribir particiones lógicas..."<<endl;
+        }
+    }
+
     //Ajuste partition
     if(fit == ""){
         fit = "W";
@@ -622,6 +631,16 @@ void commandFdisk(Map& parametros){
             makePrimary(path, ptn);
         }else if(tipo == "E"){
             makeExtended(path,ptn);
+        } else if(tipo == "L"){
+            EBR ebr;
+            strcpy(ebr.part_status,status.c_str());
+            strcpy(ebr.part_fit,fit.c_str());
+            strcpy(ebr.part_name,name.c_str());
+            if(size > 0){
+                ebr.part_s = size;
+            }
+            ebr.part_next = -1;
+            makeLogic(path, ebr);
         }
 
         
@@ -813,5 +832,77 @@ bool findingExtended(string path){
             fclose(disk);
             return true;
         }
+    }
+}
+
+//Función para crear particiones lógicas
+void makeLogic(string path, EBR ebr){
+    //Leer tamaño de partición extendida
+    FILE * disk;
+    if(disk = fopen(path.c_str(), "rb+")){
+        MBR dataMBR;
+        int sizeExtend = 0;
+        int pivStart = 0, start = 0;
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMBR,sizeof(MBR),1,disk);
+        cout<<"pivStart:"<<pivStart<<endl;
+        if(dataMBR.mbr_partition_1.part_type[0] == 'E'){
+            sizeExtend = dataMBR.mbr_partition_1.part_s;
+            pivStart = dataMBR.mbr_partition_1.part_start;
+            cout<<"uno"<<endl;
+        }else if(dataMBR.mbr_partition_2.part_type[0] == 'E'){
+            sizeExtend = dataMBR.mbr_partition_2.part_s;
+            pivStart = dataMBR.mbr_partition_2.part_start;
+            cout<<"dos"<<endl;
+        }else if(dataMBR.mbr_partition_3.part_type[0] == 'E'){
+            sizeExtend = dataMBR.mbr_partition_3.part_s;
+            pivStart = dataMBR.mbr_partition_3.part_start;
+            cout<<"tres"<<endl;
+        }else if(dataMBR.mbr_partition_4.part_type[0] == 'E'){
+            sizeExtend = dataMBR.mbr_partition_4.part_s;
+            pivStart = dataMBR.mbr_partition_4.part_start;
+            cout<<"cuatro"<<endl;
+        }
+        //Buscando EBR inicial
+        EBR dataEBR;
+        int sizeEBR = sizeof(EBR);
+        int pivSize = 0, acumulado = 0;
+        bool alerta = false;
+        cout<<"pivStart:"<<pivStart<<endl;
+        fseek(disk,pivStart+1,SEEK_SET);
+        fread(&dataEBR,sizeof(EBR),1,disk);
+        cout<<"part_next:"<<dataEBR.part_next<<"<-"<<endl;
+        while(!feof(disk)){
+            if(dataEBR.part_next == -1){
+                //cout<<"hola"<<endl;
+                start = dataEBR.part_start;
+                pivSize = dataEBR.part_s;
+                //Validando que la partición lógica quepa en la extendida
+                if(ebr.part_s <= (sizeExtend-acumulado)){
+                    start += sizeEBR+pivSize;
+                    dataEBR.part_next = start;   
+                }else{
+                    alerta = true;
+                    cout<<"No hay espacio suficiente para crear la partición lógica..."<<endl;
+                }
+                cout<<"ebr:"<<ebr.part_s<<endl;
+                cout<<"ext:"<<sizeExtend<<endl;
+                cout<<"str:"<<pivStart<<endl;
+                break;
+            }else{
+                acumulado += dataEBR.part_s;
+            }
+        }
+        //Escribe partición lógica
+        if(alerta == false){
+            //Terminando de llenar valores de EBR
+            ebr.part_start = start;
+            //Ubicandonos en la posición de nueva partición
+            fseek(disk,start,SEEK_SET);
+            fwrite(&ebr,sizeof(EBR),1,disk);
+            cout<<"Partición lógica creada"<<endl;
+            cout<<"Start:"<<start<<endl;
+        }
+        fclose(disk);
     }
 }
