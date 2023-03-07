@@ -197,3 +197,5 @@ fdisk >size=3 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/M
 fdisk >type=E >size=3 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Extended
 
 fdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >type=L >size=1 >name=Logic
+
+mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Extended

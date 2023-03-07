@@ -67,7 +67,8 @@ bool namePartition(string path, string name);
 void makeExtended(string path, Partition ptn);
 bool findingExtended(string path);
 void makeLogic(string path, EBR ebr);
-
+template<typename Map>
+void commandMount(Map& parametros);
 
 int main(){
     cout<<"\n\n";
@@ -205,6 +206,7 @@ void ejecutar(string entrada, Map& parametros){
         commandFdisk(parametros);
     }else if(entrada == "MOUNT"){
         cout<<"MOUNT"<<endl;
+        commandMount(parametros);
     }else if(entrada == "UNMOUNT"){
         cout<<"UNMOUNT"<<endl;
     }else if(entrada == "MKFS"){
@@ -904,5 +906,62 @@ void makeLogic(string path, EBR ebr){
             cout<<"Start:"<<start<<endl;
         }
         fclose(disk);
+    }
+}
+
+//Comando Mount
+template <typename Map>
+void commandMount(Map& parametros){
+    //Variables para parametros
+    string path, name, pivP;
+    string id = "81";
+    int partition = 0;
+    bool alerta = false;
+
+    //Valida que los parametros estén correctos
+    for(auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "PATH"){
+            cout<<"Archivo ubicado: "<<p.second<<endl;
+            path = p.second;
+        }else if(pivP == "NAME"){
+            cout<<"Nombre de partición: "<<p.second<<endl;
+            name = p.second;
+        }else{
+            cout<<"Parametro incorrecto"<<pivP<<endl;
+            alerta = true;
+        }
+    }
+
+    //Validando que el disco exista
+    MBR dataMBR;
+    FILE * disk;
+    if(disk = fopen(path.c_str(),"rb")){
+        fseek(disk,0,SEEK_SET);
+        fread(&dataMBR,sizeof(MBR),1,disk);
+        //Buscaando nombre de partición
+        if(dataMBR.mbr_partition_1.part_name == name){
+            partition = 1;
+        }else if(dataMBR.mbr_partition_2.part_name == name){
+            partition = 2;
+        }else if(dataMBR.mbr_partition_3.part_name == name){
+            partition = 3;
+        }else if(dataMBR.mbr_partition_4.part_name == name){
+            partition = 4;
+        }else{
+            cout<<"No existe la partición llamada: "<<name<<endl;
+            alerta = true;
+        }
+        fclose(disk);
+    }else{
+        cout<<"Disco no existente..."<<endl;
+        alerta = true;
+    }
+    //Procedemos a montar la partición
+    if(alerta != true){
+        //ID para la partición
+        id = id + to_string(partition) + name;
+        cout<<"Montando la partición: "<<id<<endl;
+
     }
 }
