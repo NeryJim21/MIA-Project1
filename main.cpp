@@ -5,6 +5,7 @@
 #include <map>
 #include <time.h>
 #include <dirent.h>
+#include <sstream>
 
 using namespace std;
 
@@ -80,6 +81,7 @@ template<typename Map>
 void commandMount(Map& parametros);
 template<typename Map>
 void commandUnmount(Map& parametros);
+void commandPause();
 
 int main(){
     cout<<"\n\n";
@@ -261,6 +263,7 @@ void ejecutar(string entrada, Map& parametros){
         cout<<"CHGRP"<<endl;
     }else if(entrada == "PAUSE"){
         cout<<"PAUSE"<<endl;
+        commandPause();
     }else if(entrada == "RECOVERY"){
         cout<<"RECOVERY"<<endl;
     }else if(entrada == "LOSS"){
@@ -926,7 +929,7 @@ particionMontada montada[10]; //Array para los discos montados
 template <typename Map>
 void commandMount(Map& parametros){
     //Variables para parametros
-    string path, name, pivP;
+    string path, name, pivP, nameD;
     string id = "81";
     int partition = 0;
     bool alerta = false;
@@ -983,8 +986,19 @@ void commandMount(Map& parametros){
     }
     //Procedemos a montar la partición
     if(alerta != true){
+        //Nombre del disco
+        string lectura;
+        stringstream input_stringstream(path);
+        while(getline(input_stringstream, lectura, '/')){
+            nameD = lectura;
+        }
+        for(int x = 0; i<4;i++){
+            nameD.pop_back();
+        }
+        
+        cout<<"Disco:"<<nameD<<endl;
         //ID para la partición
-        id = id + to_string(partition) + name;
+        id = id + to_string(partition) + nameD;
         cout<<"Montando la partición: "<<id<<endl;
         //Escribiendo struct
         montada[i].estado = 1;
@@ -1005,7 +1019,8 @@ template<typename Map>
 void commandUnmount(Map& parametros){
     //Variables para parametros
     string id, pivP;
-
+    int pivIndice = -1;
+    bool alerta = false;
     //Valida que los parametros estén correctos
     for(auto& p: parametros){
         pivP = mayusculas(p.first);
@@ -1017,17 +1032,32 @@ void commandUnmount(Map& parametros){
     }
 
     //Buscando partición montada
-    for(int i = 0; i<10;i++){
+    int i = 0;
+    for(i = 0; i<10;i++){
         if(montada[i].nombre == id){
             //Borrando datos de partición montada
-            montada[i].estado = 0;
-            montada[i].nombre = "";
-            montada[i].numero = 0;
-            montada[i].path = "";
+            pivIndice = i;
             break;
         }
     }
+    if( i == 10 && pivIndice == -1){
+        alerta = true;
+    }
 
-    cout<<"Partición Desmontada: "<<id<<endl;
+    //Borrando datos de partición montada
+    if(alerta != true){
+        montada[pivIndice].estado = 0;
+        montada[pivIndice].nombre = "";
+        montada[pivIndice].numero = 0;
+        montada[pivIndice].path = "";
+        cout<<"Partición Desmontada: "<<id<<endl;
+    }else{
+        cout<<"Error, el ID: "<<id<<" no ha sido montado"<<endl;
+    }
+}
 
+//Comando Pause
+void commandPause(){
+    cout<<"Presione una tecla para continuar..."<<endl;
+    getchar();
 }
