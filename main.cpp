@@ -46,6 +46,21 @@ struct EBR{
     char part_name[16];
 };
 
+//Estructura particion montada
+struct particionMontada{
+    int numero;
+    int estado;
+    int type=-1;
+    string nombre;
+};
+
+//Discos montados
+struct Discos{
+    string path;
+    int estado;
+    particionMontada particiones[10];
+};
+
 //Prototipo de funciones
 void menu();
 void comandos(string entrada);
@@ -910,6 +925,7 @@ void makeLogic(string path, EBR ebr){
 }
 
 //Comando Mount
+Discos discos[5]; //Array para los discos montados
 template <typename Map>
 void commandMount(Map& parametros){
     //Variables para parametros
@@ -957,11 +973,39 @@ void commandMount(Map& parametros){
         cout<<"Disco no existente..."<<endl;
         alerta = true;
     }
+    //Viendo si existe espacio para montar disco
+    int i = 0;
+    for(i = 0; i<5;i++){
+        if(discos[i].estado==0||discos[i].path==path){
+            break;
+        }
+    }
+    if(i==5){
+        cout<<"No hay espacio para montar otro disco"<<endl;
+        alerta = true;
+    }
     //Procedemos a montar la partición
     if(alerta != true){
         //ID para la partición
         id = id + to_string(partition) + name;
         cout<<"Montando la partición: "<<id<<endl;
+        //Escribiendo struct
+        discos[i].estado = 1;
+        discos[i].path = path;
+        int j =0;
+        for(j = 0; j<10;j++){
+            particionMontada par = discos[i].particiones[j];
+            if(par.estado == 0){ //Para montar la nueva partición
+                discos[i].particiones[j].estado = 1;
+                discos[i].particiones[j].nombre = id;
+                discos[i].particiones[j].numero = j+1;
+                break;
+            }
 
+        }
+        cout<<"Disco Montado..."<<endl;
+        cout<<"ID:"<<discos[i].particiones[j].nombre<<endl;
+        cout<<"Estado:"<<discos[i].particiones[j].estado<<endl;
+        cout<<"Número:"<<discos[i].particiones[j].numero<<endl;
     }
 }
