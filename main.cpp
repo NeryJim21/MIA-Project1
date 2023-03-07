@@ -52,13 +52,7 @@ struct particionMontada{
     int estado;
     int type=-1;
     string nombre;
-};
-
-//Discos montados
-struct Discos{
     string path;
-    int estado;
-    particionMontada particiones[10];
 };
 
 //Prototipo de funciones
@@ -84,6 +78,8 @@ bool findingExtended(string path);
 void makeLogic(string path, EBR ebr);
 template<typename Map>
 void commandMount(Map& parametros);
+template<typename Map>
+void commandUnmount(Map& parametros);
 
 int main(){
     cout<<"\n\n";
@@ -224,6 +220,7 @@ void ejecutar(string entrada, Map& parametros){
         commandMount(parametros);
     }else if(entrada == "UNMOUNT"){
         cout<<"UNMOUNT"<<endl;
+        commandUnmount(parametros);
     }else if(entrada == "MKFS"){
         cout<<"MKFS"<<endl;
     }else if(entrada == "LOGIN"){
@@ -925,7 +922,7 @@ void makeLogic(string path, EBR ebr){
 }
 
 //Comando Mount
-Discos discos[5]; //Array para los discos montados
+particionMontada montada[10]; //Array para los discos montados
 template <typename Map>
 void commandMount(Map& parametros){
     //Variables para parametros
@@ -975,13 +972,13 @@ void commandMount(Map& parametros){
     }
     //Viendo si existe espacio para montar disco
     int i = 0;
-    for(i = 0; i<5;i++){
-        if(discos[i].estado==0||discos[i].path==path){
+    for(i = 0; i<10;i++){
+        if(montada[i].estado==0||montada[i].path==path){
             break;
         }
     }
-    if(i==5){
-        cout<<"No hay espacio para montar otro disco"<<endl;
+    if(i==10){
+        cout<<"No hay espacio para montar otra partición"<<endl;
         alerta = true;
     }
     //Procedemos a montar la partición
@@ -990,22 +987,47 @@ void commandMount(Map& parametros){
         id = id + to_string(partition) + name;
         cout<<"Montando la partición: "<<id<<endl;
         //Escribiendo struct
-        discos[i].estado = 1;
-        discos[i].path = path;
-        int j =0;
-        for(j = 0; j<10;j++){
-            particionMontada par = discos[i].particiones[j];
-            if(par.estado == 0){ //Para montar la nueva partición
-                discos[i].particiones[j].estado = 1;
-                discos[i].particiones[j].nombre = id;
-                discos[i].particiones[j].numero = j+1;
-                break;
-            }
+        montada[i].estado = 1;
+        montada[i].path = path;
+        montada[i].estado = 1;
+        montada[i].nombre = id;
+        montada[i].numero = i+1;
 
-        }
         cout<<"Disco Montado..."<<endl;
-        cout<<"ID:"<<discos[i].particiones[j].nombre<<endl;
-        cout<<"Estado:"<<discos[i].particiones[j].estado<<endl;
-        cout<<"Número:"<<discos[i].particiones[j].numero<<endl;
+        cout<<"ID:"<<montada[i].nombre<<endl;
+        cout<<"Estado:"<<montada[i].estado<<endl;
+        cout<<"Número:"<<montada[i].numero<<endl;
     }
+}
+
+//Comando UnMount
+template<typename Map>
+void commandUnmount(Map& parametros){
+    //Variables para parametros
+    string id, pivP;
+
+    //Valida que los parametros estén correctos
+    for(auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "ID"){
+            id = p.second;
+        }else{
+            cout<<"Parametro incorrecto..."<<pivP<<endl;
+        }
+    }
+
+    //Buscando partición montada
+    for(int i = 0; i<10;i++){
+        if(montada[i].nombre == id){
+            //Borrando datos de partición montada
+            montada[i].estado = 0;
+            montada[i].nombre = "";
+            montada[i].numero = 0;
+            montada[i].path = "";
+            break;
+        }
+    }
+
+    cout<<"Partición Desmontada: "<<id<<endl;
+
 }
