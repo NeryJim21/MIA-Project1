@@ -6,6 +6,7 @@
 #include <time.h>
 #include <dirent.h>
 #include <sstream>
+#include <math.h>
 
 using namespace std;
 
@@ -50,11 +51,77 @@ struct EBR{
 //Estructura particion montada
 struct particionMontada{
     int numero;
-    int estado;
-    int type=-1;
+    int estado=0;//0=vacía,1=montada
+    int type=-1;//2=ext2, 3=ext3
     string nombre;
     string path;
+    string id;
 };
+
+//Estructura SuperBloque
+struct SB{
+    int s_filesystem_type;
+    int s_inodes_count;
+    int s_blocks_count;
+    int s_free_blocks_count;
+    int s_free_inodes_count;
+    char s_mtime[80];
+    char s_umtime[80];
+    int s_mnt_count;
+    int s_magic;
+    int s_inode_s;
+    int s_block_s;
+    int s_first_ino;
+    int s_first_blo;
+    int s_bm_inode_start;
+    int s_bm_block_start;
+    int s_inode_start;
+    int s_block_start;
+};
+
+//Estructura Inodos
+struct Inodo{
+    int i_uid;
+    int i_gid;
+    int i_s;
+    char i_atime[80];
+    char i_ctime[80];
+    char i_mtime[80];
+    int i_block[15];
+    char i_type[1];
+    int i_perm;
+};
+
+//Estructura contenido Bloque
+struct Content{
+    char b_name[12];
+    int b_inodo;
+};
+
+//Estructura Bloque
+struct Bloque{
+    Content b_content[4];
+};
+
+//Estructura Bloque Archivo
+struct Archivo{
+    char b_content[64];
+};
+
+//Estructura Bloque Apuntadores
+struct Apuntadores{
+    int b_pointers[16];
+};
+
+//Estructura Journaling
+struct Journaling{
+    char j_accion[20];
+    char j_nombre[20];
+    char j_destino[20];
+    char j_contenido[20];
+    char j_fecha[80];
+};
+
 
 //Prototipo de funciones
 void menu();
@@ -82,6 +149,11 @@ void commandMount(Map& parametros);
 template<typename Map>
 void commandUnmount(Map& parametros);
 void commandPause();
+int findinID(string id);
+template<typename Map>
+void commandMkfs(Map& parametros);
+void mostrarMount();
+tm dataTime();
 
 int main(){
     cout<<"\n\n";
@@ -105,7 +177,14 @@ void menu(){
     while(recursive){
         string entrada;
         cout<<"Ingrese comando:"<<endl;
+        cout<<"-> ";
         getline(cin,entrada);
+        if(strcmp(entrada.c_str(),"exit")==0){
+            break;
+        }else if(strcmp(entrada.c_str(),"cls")==0){
+            system("clear");
+            continue;
+        }
         comandos(entrada);
     }
     //menu();
@@ -273,6 +352,8 @@ void ejecutar(string entrada, Map& parametros){
         commandExecute(parametros);
     }else if(entrada == "REP"){
         cout<<"REP"<<endl;
+    }else if(entrada == "FECHA"){
+        cout<<"fecha: "<<dataTime<<endl;
     }
 }
 
@@ -992,7 +1073,7 @@ void commandMount(Map& parametros){
         while(getline(input_stringstream, lectura, '/')){
             nameD = lectura;
         }
-        for(int x = 0; i<4;i++){
+        for(int x = 0; x<4;x++){
             nameD.pop_back();
         }
         
@@ -1003,14 +1084,12 @@ void commandMount(Map& parametros){
         //Escribiendo struct
         montada[i].estado = 1;
         montada[i].path = path;
-        montada[i].estado = 1;
-        montada[i].nombre = id;
+        montada[i].type = 2;
+        montada[i].nombre = name;
         montada[i].numero = i+1;
+        montada[i].id = id;
 
-        cout<<"Disco Montado..."<<endl;
-        cout<<"ID:"<<montada[i].nombre<<endl;
-        cout<<"Estado:"<<montada[i].estado<<endl;
-        cout<<"Número:"<<montada[i].numero<<endl;
+        mostrarMount();
     }
 }
 
@@ -1020,7 +1099,7 @@ void commandUnmount(Map& parametros){
     //Variables para parametros
     string id, pivP;
     int pivIndice = -1;
-    bool alerta = false;
+    bool alerta = false;;
     //Valida que los parametros estén correctos
     for(auto& p: parametros){
         pivP = mayusculas(p.first);
@@ -1031,19 +1110,16 @@ void commandUnmount(Map& parametros){
         }
     }
 
-    //Buscando partición montada
-    int i = 0;
-    for(i = 0; i<10;i++){
-        if(montada[i].nombre == id){
-            //Borrando datos de partición montada
-            pivIndice = i;
-            break;
-        }
-    }
-    if( i == 10 && pivIndice == -1){
+    if(id == ""){
+        cout<<"Falta el valor del ID"<<endl;
         alerta = true;
     }
 
+    //Buscando partición montada
+    pivIndice = findinID(id);
+    if(pivIndice == -1){
+        alerta = true;
+    }
     //Borrando datos de partición montada
     if(alerta != true){
         montada[pivIndice].estado = 0;
@@ -1056,8 +1132,275 @@ void commandUnmount(Map& parametros){
     }
 }
 
+//Buscando partición montada
+int findinID(string id){
+    int i = 0, pivIndice = -1;
+    for(i = 0; i<10;i++){
+        if(montada[i].nombre == id){
+            //Borrando datos de partición montada
+            pivIndice = i;
+            return pivIndice;
+            break;
+        }
+    }
+    if( i == 10 && pivIndice == -1){
+        return -1;
+    }
+}
 //Comando Pause
 void commandPause(){
     cout<<"Presione una tecla para continuar..."<<endl;
     getchar();
 }
+
+//Mostrando particiones montadas
+void mostrarMount(){
+    
+    for(int i = 0; i<10;i++){
+        bool isMount = false;
+        if(montada[i].type != -1){
+            cout<<" - - - - - - - - - - P A R T I C I O N E S  M O N T A D A S - - - - - - - - -"<<endl;
+            cout<<"Nombre: "<<montada[i].nombre<<endl;
+            cout<<"ID: "<<montada[i].id<<endl;
+            cout<<"Tipo: "<<montada[i].type<<endl;
+            isMount = true;
+        }
+        if(i==10 && isMount == false){
+            cout<<"Aún no hay particiones montadas..."<<endl;
+        }
+    }
+}
+
+template<typename Map>
+void commandMkfs(Map& parametros){
+    string pivP, id, type, fs;
+    int pivID;
+    bool alerta = false;
+    //Validando parametros
+    for(auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "ID"){
+            id = p.second;
+        }else if(pivP == "TYPE"){
+            type = mayusculas(p.second);
+        }else if(pivP == "FS"){
+            fs = p.second;
+        }else{
+            cout<<"Parametro incorrecto..."<<endl;
+            alerta = true;
+        }
+    }
+
+    //Verificando id
+    pivID = findinID(id);
+    if(pivID == -1){
+        cout<<"El ID no ha sido montado..."<<endl;
+        alerta = true;
+    }
+
+    //Verificando el tipo de formateo
+    if(type != "" && type != "FULL"){
+        cout<<"Tipo de formateo incorrecto..."<<endl;
+        alerta = true;
+    }
+
+    //Verificando sistema de archivo
+    if(fs == ""){
+        fs = "2FS";
+    }
+    if(fs != "2FS" && fs != "3FS"){
+        cout<<"Sistema de archivos incorrecto..."<<endl;
+        alerta = true;
+    }
+
+    //Realizando formateo
+    if(alerta != true){
+        string path = montada[pivID].path;
+        string nameP = montada[pivID].nombre;
+        int inicio=0,fin=0;
+        int pivTam=0;
+        MBR dataMBR;
+        //Abriendo MBR
+        FILE * disk;
+        if(disk = fopen(path.c_str(),"rb+")){
+            //Nos posicionamos al inicio del disco
+            fseek(disk,0,SEEK_SET);
+            fread(&dataMBR,sizeof(MBR),1,disk);
+            //Buscaando nombre de partición
+            if(dataMBR.mbr_partition_1.part_name == nameP){
+                inicio = dataMBR.mbr_partition_1.part_start;
+                pivTam = dataMBR.mbr_partition_1.part_s;
+                fin = inicio + pivTam;
+            }else if(dataMBR.mbr_partition_2.part_name == nameP){
+                inicio = dataMBR.mbr_partition_2.part_start;
+                pivTam = dataMBR.mbr_partition_2.part_s;
+                fin = inicio + pivTam;
+            }else if(dataMBR.mbr_partition_3.part_name == nameP){
+                inicio = dataMBR.mbr_partition_3.part_start;
+                pivTam = dataMBR.mbr_partition_3.part_s;
+                fin = inicio + pivTam;
+            }else if(dataMBR.mbr_partition_4.part_name == nameP){
+                inicio = dataMBR.mbr_partition_4.part_start;
+                pivTam = dataMBR.mbr_partition_4.part_s;
+                fin = inicio + pivTam;
+            }
+            //Escribiendo el formato
+            //string buffer "/0";
+            double sizeN;
+            int contInode,contBlock;
+            SB dataSB;
+            if(type == "2FS"){
+                //tamaño_particion = sizeOf(superblock) + n + 3 * n + n * sizeOf(inodos) + 3 *
+                //n * sizeOf(block)
+                sizeN = (pivTam-sizeof(SB))/(4+sizeof(Inodo)+3*sizeof(Bloque));
+                dataSB.s_filesystem_type=2; 
+            }else if(type =="3FS"){
+                sizeN = (pivTam-sizeof(SB))/(4+sizeof(Journaling)+sizeof(Inodo)+3*sizeof(Bloque));
+                dataSB.s_filesystem_type=3;
+            }
+            contInode = floor(sizeN);
+            contBlock = 3*contInode;
+            //Escribiendo datos de Superbloque SB
+            dataSB.s_inodes_count = contInode;
+            dataSB.s_blocks_count = contBlock;
+            dataSB.s_free_inodes_count=contInode;
+            dataSB.s_free_blocks_count = contBlock;
+            //Tomando hora del sistema
+            time_t now = time(NULL);
+            struct tm *ts;
+            char buf[80];
+            ts = localtime(&now);
+            strftime(dataSB.s_mtime,sizeof(dataSB.s_mtime), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+            strftime(dataSB.s_umtime,sizeof(dataSB.s_umtime), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+            dataSB.s_mnt_count = 0;
+            dataSB.s_magic = 0xEF53;
+            dataSB.s_inode_s = sizeof(Inodo);
+            dataSB.s_block_s = sizeof(Bloque);
+            dataSB.s_first_ino = 0;
+            dataSB.s_first_blo = 0;
+            int piv = inicio + sizeof(SB);
+            if(type == "3FS"){
+                piv = piv+(sizeof(Journaling)*contInode);    
+            }
+            dataSB.s_bm_inode_start = piv;
+            int piv2 = piv+contInode;
+            dataSB.s_bm_block_start = piv2;
+            int piv3 = piv2+contBlock;
+            dataSB.s_inode_start = piv3;
+            dataSB.s_block_start = piv3+sizeof(Inodo)*contInode;
+            //Escribiendo datos en el disco
+            fseek(disk,inicio,SEEK_SET);
+            fwrite(&dataSB,sizeof(SB),1,disk);
+            //Escribiendo bitmaps inodos
+            int contador = 0;
+            fseek(disk,dataSB.s_bm_inode_start,SEEK_SET);
+            while(contador<contInode){
+                fwrite("0",sizeof(char),1,disk);
+                contador++;
+            }
+            //Escribiendo bitmap bloques
+            contador = 0;
+            fseek(disk,dataSB.s_bm_block_start,SEEK_SET);
+            while(contador<contBlock){
+                fwrite("0",sizeof(char),1,disk);
+                contador++;
+            }
+            //Escribiendo carpeta raiz
+            Inodo dataInodo;
+            dataInodo.i_uid = 1;
+            dataInodo.i_gid = 1;
+            dataInodo.i_s = 0;
+            time_t now1 = time(NULL);
+            struct tm *ts1;
+            char buf1[80];
+            ts1 = localtime(&now1);
+            strftime(dataInodo.i_atime,sizeof(dataInodo.i_atime), "%a %Y-%m-%d %H:%M:%S %Z", ts1);
+            strftime(dataInodo.i_ctime,sizeof(dataInodo.i_ctime), "%a %Y-%m-%d %H:%M:%S %Z", ts1);
+            strftime(dataInodo.i_mtime,sizeof(dataInodo.i_mtime), "%a %Y-%m-%d %H:%M:%S %Z", ts1);
+            for(int i = 0; i<1;i++){
+                dataInodo.i_block[i] = -1;
+            }
+            dataInodo.i_perm = 777;
+            dataInodo.i_type = '0';
+            int indexI = dataSB.s_first_ino;
+            //Nuevo bloque de carpeta
+            Bloque dataDir;
+            for(int i = 0; i<4;i++){
+                dataDir.b_content[i].b_inodo = -1;
+            }
+            dataDir.b_content[0].b_name = '/';
+            dataDir.b_content[0].b_inodo = indexI;
+            dataDir.b_content[1].b_name =  '/';
+            dataDir.b_content[1].b_inodo = 0;
+            //Asignando bloque a carpeta
+            dataInodo.i_block[0] = dataSB.s_first_blo;
+
+            //Escribiendo Inodo en el disco
+            fseek(disk,dataSB.s_inode_start+(dataSB.s_inode_s*indexI),SEEK_SET);
+            fwrite(&dataInodo,sizeof(Inodo),1,disk);
+
+            //Escribiendo Bloque en el disco
+            fseek(disk,dataSB.s_block_start+(dataSB.s_block_s*dataSB.s_first_blo),SEEK_SET);
+            fwrite(&dataDir,sizeof(Bloque),1,disk);
+
+            //Escribiendo datos en el disco
+            fseek(disk,inicio,SEEK_SET);
+            fwrite(&dataSB,sizeof(SB),1,disk);
+
+            //Creando archivo de usuarios
+            char *usuario =  "1,G,root\n,1,U,root,root,123\n";
+            int indiceInodoPadre = 0;
+            stringstream ss("/users.txt");
+            string token,dirPad="/";
+            int indiceBloqueActual = 0;
+            while(getline(ss,token, '/')){
+                if(token != ""){
+                    if(ss.tellg() == -1){
+                        //Nuevo bloque inodo
+                        Inodo dataInodo2;
+                        dataInodo2.i_uid = 1;
+                        dataInodo2.i_gid = 1;
+                        dataInodo2.i_s = 28;
+                        time_t now2 = time(NULL);
+                        struct tm *ts2;
+                        char buf2[80];
+                        ts2 = localtime(&now2);
+                        strftime(dataInodo2.i_atime,sizeof(dataInodo2.i_atime), "%a %Y-%m-%d %H:%M:%S %Z", ts2);
+                        strftime(dataInodo2.i_ctime,sizeof(dataInodo2.i_ctime), "%a %Y-%m-%d %H:%M:%S %Z", ts2);
+                        strftime(dataInodo2.i_mtime,sizeof(dataInodo2.i_mtime), "%a %Y-%m-%d %H:%M:%S %Z", ts2);
+                        for(int i = 0; i<1;i++){
+                            dataInodo2.i_block[i] = -1;
+                        }
+                        dataInodo.i_perm = 664;
+                        dataInodo.i_type = '1';
+                        int indexI = dataSB.s_first_ino;
+                        //Nuevo bloque de carpeta
+                        Archivo dataDir1;
+                        for(int i = 0; i<64;i++){
+                            dataDir1.b_content[i] = 0;
+                        }
+                        int indexofInodo = 0;
+                        int contadorCaracteres = 0;
+                        int indexCaracteres = 0;
+                        bool keepSaving = true;
+                        while(keepSaving){
+                            if(contadorCaracteres >= 64 || indexCaracteres >= 28){
+                                if(indexofInodo<12){
+                                    int pivInitB = dataSB.s_first_blo;
+                                    dataDir1[indexofInodo] = pivInitB;
+                                    pivInitB = pivInitB*dataSB.s_block_s+dataSB.s_block_start;
+                                    fseek(disk,pivInitB,SEEK_SET);
+                                    fwrite(&dataSB,sizeof(SB),1,disk);
+                                    dataSB.s_first_blo = 1;
+                                    dataSB.s_free_blocks_count--;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
+    }
+}
+
