@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <sstream>
 #include <math.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -122,6 +123,8 @@ struct Journaling{
     char j_fecha[80];
 };
 
+particionMontada montada[10]; //Array para los discos montados
+
 
 //Prototipo de funciones
 void menu();
@@ -153,7 +156,12 @@ int findinID(string id);
 template<typename Map>
 void commandMkfs(Map& parametros);
 void mostrarMount();
-tm dataTime();
+template<typename Map>
+void commandRep(Map& parametros);
+void reporteMBR(string path, string ruta);
+void reportEBR(EBR *ebr,FILE *myFile,int index);
+EBR* leerEBR(int next,string path);
+void reporteDisk(string path, string ruta);
 
 int main(){
     cout<<"\n\n";
@@ -183,6 +191,9 @@ void menu(){
             break;
         }else if(strcmp(entrada.c_str(),"cls")==0){
             system("clear");
+            continue;
+        }else if(strcmp(entrada.c_str(),"montadas")==0){
+            mostrarMount();
             continue;
         }
         comandos(entrada);
@@ -352,8 +363,7 @@ void ejecutar(string entrada, Map& parametros){
         commandExecute(parametros);
     }else if(entrada == "REP"){
         cout<<"REP"<<endl;
-    }else if(entrada == "FECHA"){
-        cout<<"fecha: "<<dataTime<<endl;
+        commandRep(parametros);
     }
 }
 
@@ -1006,7 +1016,6 @@ void makeLogic(string path, EBR ebr){
 }
 
 //Comando Mount
-particionMontada montada[10]; //Array para los discos montados
 template <typename Map>
 void commandMount(Map& parametros){
     //Variables para parametros
@@ -1136,8 +1145,7 @@ void commandUnmount(Map& parametros){
 int findinID(string id){
     int i = 0, pivIndice = -1;
     for(i = 0; i<10;i++){
-        if(montada[i].nombre == id){
-            //Borrando datos de partición montada
+        if(montada[i].id == id){
             pivIndice = i;
             return pivIndice;
             break;
@@ -1387,7 +1395,7 @@ void commandMkfs(Map& parametros){
                             if(contadorCaracteres >= 64 || indexCaracteres >= 28){
                                 if(indexofInodo<12){
                                     int pivInitB = dataSB.s_first_blo;
-                                    dataDir1[indexofInodo] = pivInitB;
+                                    //dataDir1[indexofInodo] = pivInitB;
                                     pivInitB = pivInitB*dataSB.s_block_s+dataSB.s_block_start;
                                     fseek(disk,pivInitB,SEEK_SET);
                                     fwrite(&dataSB,sizeof(SB),1,disk);
@@ -1404,3 +1412,437 @@ void commandMkfs(Map& parametros){
     }
 }
 
+//Comando REP
+template<typename Map>
+void commandRep(Map& parametros){
+    //Vaiables para parametros
+    string name,path,id,ruta,pivP;
+    bool alerta = false;
+    //Valida que los parametros estén correctos
+    for(auto& p: parametros){
+        pivP = mayusculas(p.first);
+        if(pivP == "PATH"){
+            cout<<"Archivo ubicado: "<<p.second<<endl;
+            path = p.second;
+        }
+        else if(pivP == "NAME"){
+            cout<<"Nombre del reporte: "<<p.second<<endl;
+            name = mayusculas(p.second);
+        }
+        else if(pivP == "ID"){
+            cout<<"ID: "<<p.second<<endl;
+            id = p.second;
+        }
+        else if(pivP == "RUTA"){
+            cout<<"Ruta: "<<p.second<<endl;
+            ruta = p.second;
+        }
+        else{
+            cout<<"parametro incorrecto"<<pivP<<endl;
+            alerta = true;
+        }
+    }
+
+    int montID = 0;
+    montID = findinID(id);
+    cout<<"montID:"<<montID<<endl;
+    if(montID == -1){
+        cout<<"La partición: "<<id<<" No ha sido montada"<<endl;
+        alerta = true;
+    }else{
+        ruta = montada[montID].path;
+    }
+
+    //Generando los reportes
+    if(alerta != true){
+        if(name == "MBR"){
+            cout<<"Reporte MBR"<<endl;
+            reporteMBR(ruta,path);
+        }else if(name == "DISK"){
+            cout<<"Reporte DISK"<<endl;
+            reporteDisk(ruta,path);
+        }else if(name == "INODE"){
+            cout<<"Reporte INODE"<<endl;
+        }else if(name == "JOURNALING"){
+            cout<<"Reporte JOURNALING"<<endl;
+        }else if(name == "BLOCK"){
+            cout<<"Reporte BLOCK"<<endl;
+        }else if(name == "BM_INODE"){
+            cout<<"Reporte BM_INODE"<<endl;
+        }else if(name == "BM_BLOCK"){
+            cout<<"Reporte BM_BLOCK"<<endl;
+        }else if(name == "TREE"){
+            cout<<"Reporte TREE"<<endl;
+        }else if(name == "SB"){
+            cout<<"Reporte SB"<<endl;
+        }else if(name == "FILE"){
+            cout<<"Reporte FILE"<<endl;
+        }else if(name == "LS"){
+            cout<<"Reporte LS"<<endl;
+        }else{
+            cout<<"Nombre de reporte incorrecto..."<<endl;
+        }
+    }
+}
+
+void reporteMBR(string path, string ruta){
+    MBR *dataMBR;
+    FILE *disk = fopen(path.c_str(),"rb+");
+    bool alerta = false;
+    if(disk != NULL){
+        fseek(disk,0,SEEK_SET);
+        fread(dataMBR,sizeof(MBR),1,disk);
+        fclose(disk);
+    }else{
+        cout<<"Error al abrir disco"<<endl;
+        alerta = true;
+    }
+
+    if(alerta != true){
+        FILE *report;
+        ruta += "reporte_mbr.dot";
+        report = fopen(ruta.c_str(),"w+");
+        if(report != NULL){
+            //fseek(report,0,SEEK_SET);
+            fputs("digraph {\ntbl [\nshape=plaintext\n label=<\n", report);
+            fputs("<table border='0' cellborder='1' cellspacing='0'>\n",report);
+            fputs("<tr><td colspan=\"3\">Disk1</td></tr>\n",report);
+            fputs("<th><td>Nombre</td><td>Valor</td></th>\n",report);
+            //DATOS MBR
+            //TAMAÑO
+            fputs("<tr><td bgcolor=\"lightblue\">mbr_tamaño</td><td bgcolor=\"lightblue\">",report);
+            fputs(&to_string(dataMBR->mbr_tamano)[0],report);
+            fputs("</td></tr>\n",report);
+            //FECHA
+            fputs("<tr><td bgcolor=\"lightblue\">mbr_Fecha_creación</td><td bgcolor=\"lightblue\">",report);
+            fputs(dataMBR->mbr_fecha_creacion,report);
+            fputs("</td></tr>\n",report);
+            //SIGNATURE
+            fputs("<tr><td bgcolor=\"lightblue\">mbr_disk_signature</td><td bgcolor=\"lightblue\">",report);
+            fprintf(report, "%d", dataMBR->mbr_dsk_signature);
+            fputs("</td></tr>\n",report);
+            //FIT
+            fputs("<tr><td bgcolor=\"lightblue\">mbr_disk_fit</td><td bgcolor=\"lightblue\">",report);
+            fprintf(report, "%c", dataMBR->dsk_fit[0]);
+            fputs("</td></tr>\n",report);
+            
+            char colors[4][10];
+            for(int i = 0; i<4;i++){
+                for(int j = 0; j<10;j++){
+                    colors[i][j] = 0;
+                }
+            }
+            strcat(colors[0],"#bcf7c1");
+            strcat(colors[1],"#f8fc92");
+            strcat(colors[2],"#fcc292");
+            strcat(colors[3],"#dfbcf7");
+            Partition dataPart;
+
+            for(int i = 0; i<4;i++){
+                int partition = 0;
+                if(dataMBR->mbr_partition_1.part_status[0] != '-'){
+                    partition = 1;
+                    dataPart = dataMBR->mbr_partition_1;
+                }else if(dataMBR->mbr_partition_2.part_status[0] != '-'){
+                    partition = 2;
+                    dataPart = dataMBR->mbr_partition_2;
+                }else if(dataMBR->mbr_partition_3.part_status[0] != '-'){
+                    partition = 3;
+                    dataPart = dataMBR->mbr_partition_3;
+                }else if(dataMBR->mbr_partition_4.part_status[0] != '-'){
+                    partition = 4;
+                    dataPart = dataMBR->mbr_partition_4;
+                }
+                if(partition == i+1){
+                    //PART NAME
+                    fputs("<tr><td colspan=\"2\" bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">",report);
+                    fputs(dataPart.part_name,report);
+                    fputs("</td></tr>\n",report);
+                    //PART STATUS
+                    fputs("<tr><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">part_status</td><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">",report);
+                    fprintf(report, "%d", dataPart.part_status);
+                    fputs("</td></tr>\n",report);
+                    //PART TYPE
+                    fputs("<tr><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">part_type</td><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">",report);
+                    fprintf(report, "%c", dataPart.part_type[0]);
+                    fputs("</td></tr>\n",report);
+                    //PART FIT
+                    fputs("<tr><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">part_fit</td><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">",report);
+                    fprintf(report, "%c", dataPart.part_fit[0]);
+                    fputs("</td></tr>\n",report);
+                    //PART START
+                    fputs("<tr><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">part_start</td><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">",report);
+                    fprintf(report, "%d", dataPart.part_start);
+                    fputs("</td></tr>\n",report);
+                    //PART SIZE
+                    fputs("<tr><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">part_size</td><td bgcolor=\"",report);
+                    fputs(colors[i],report);
+                    fputs("\">",report);
+                    fputs(&to_string(dataPart.part_s)[0],report);
+                    fputs("</td></tr>\n",report);
+                }
+            }
+            fputs("</table>\n",report);
+            fputs(">];\n\n", report);
+
+            //Reporte EBR
+            int i = 0;
+            if(findingExtended(path)==true){
+                EBR *dataEBR;
+                int inicio=0;
+                if(dataMBR->mbr_partition_1.part_type[0]=='E'){
+                    inicio = dataMBR->mbr_partition_1.part_start;
+                }else if(dataMBR->mbr_partition_2.part_type[0]=='E'){
+                    inicio = dataMBR->mbr_partition_2.part_start;
+                }else if(dataMBR->mbr_partition_3.part_type[0]=='E'){
+                    inicio = dataMBR->mbr_partition_3.part_start;
+                }else if(dataMBR->mbr_partition_4.part_type[0]=='E'){
+                    inicio = dataMBR->mbr_partition_4.part_start;
+                }
+                if(inicio != 0){
+                    FILE *disk = fopen(path.c_str(),"rb+");
+                    if(disk != NULL){
+                        fseek(disk,inicio,SEEK_SET);
+                        fread(dataEBR,sizeof(EBR),1,disk);
+                        fclose(disk);
+                        while(dataEBR != NULL){
+                            reportEBR(dataEBR,report,i);
+                            if(dataEBR->part_next!=-1){
+                                dataEBR = leerEBR(dataEBR->part_next,path);
+                            }else{
+                                dataEBR = NULL;
+                            }
+                            i++;
+                        }
+                        fputs("}\n",report);
+                        //cerrando stream
+                        fclose (report);
+                        string pathString(ruta);
+                        string command = "dot -Tpng report_mbr.dot -o \""+pathString+"\"";//+"/report_mbr.png";
+                        system(command.c_str());
+                        cout<<"Reporte de MBR creado...\n";
+                    }else{
+                        cout<<"Error al abrir disco"<<endl;
+                    }
+                }
+            }else{
+                fputs("}\n",report);
+                fclose(report);
+            }
+        }
+    }
+}
+
+//Agrega reporte EBR
+void reportEBR(EBR *ebr,FILE *myFile,int index){
+    string nombreNodo = "tbl"+to_string(index+1);
+    fputs(nombreNodo.c_str(),myFile);
+    fputs(" [\nshape=plaintext\n label=<\n", myFile);
+    fputs("<table border='0' cellborder='1' cellspacing='0'>\n",myFile);
+    fputs("<tr><td colspan=\"3\">",myFile);
+    fputs(ebr->part_name,myFile);
+    fputs("</td></tr>\n",myFile);
+    fputs("<th><td>Nombre</td><td>Valor</td></th>\n",myFile);
+    //PART STATUS
+    fputs("<tr><td bgcolor=\"#fcc8c8\">part_status</td><td bgcolor=\"#fcc8c8\">",myFile);
+    fprintf(myFile, "%d", ebr->part_status);
+    fputs("</td></tr>\n",myFile);
+    //PART FIT
+    fputs("<tr><td bgcolor=\"#fcc8c8\">part_fit</td><td bgcolor=\"#fcc8c8\">",myFile);
+    fprintf(myFile, "%c", ebr->part_fit);
+    fputs("</td></tr>\n",myFile);
+    //PART START
+    fputs("<tr><td bgcolor=\"#fcc8c8\">part_start</td><td bgcolor=\"#fcc8c8\">",myFile);
+    fprintf(myFile, "%d", ebr->part_start);
+    fputs("</td></tr>\n",myFile);
+    //PART SIZE
+    fputs("<tr><td bgcolor=\"#fcc8c8\">part_size</td><td bgcolor=\"#fcc8c8\">",myFile);
+    fputs(&to_string(ebr->part_s)[0],myFile);
+    fputs("</td></tr>\n",myFile);
+    //PART NEXT
+    fputs("<tr><td bgcolor=\"#fcc8c8\">part_next</td><td bgcolor=\"#fcc8c8\">",myFile);
+    fprintf(myFile, "%d", ebr->part_next);
+    fputs("</td></tr>\n",myFile);
+    fputs("</table>\n",myFile);
+    fputs(">];\n", myFile);
+}
+
+//Lee EBR
+EBR* leerEBR(int next,string path){
+    FILE *myFile = fopen(path.c_str(),"rb+");
+    if(myFile==NULL){
+        cout<<"Error al abrir el archivo \n";
+        return NULL;
+    }
+    EBR *ebr = (EBR*)malloc(sizeof(EBR));
+
+    fseek(myFile, next, SEEK_SET);
+    fread(ebr, sizeof(EBR), 1, myFile);
+    fclose(myFile);
+    return ebr;
+}
+
+void reporteDisk(string path, string ruta){
+    MBR *dataMBR = (MBR*)malloc(sizeof(MBR));
+    FILE *disk = fopen(path.c_str(),"rb+");
+    bool alerta = false;
+    if(disk != NULL){
+        fseek(disk,0,SEEK_SET);
+        fread(dataMBR, sizeof(MBR), 1, disk);
+        fclose(disk);
+    }else{
+        cout<<"Error al abrir disco"<<endl;
+        alerta = true;
+    }
+
+    if(alerta != true){
+        FILE *report;
+        ruta += "report_disk.dot";
+        report = fopen(ruta.c_str(),"w+");
+        if(report != NULL){
+            fseek(report,0,SEEK_SET);
+            fputs("digraph G {\n", report);
+            fputs("parent [\n", report);
+            fputs("shape=plaintext\n", report);
+            fputs("label=<\n", report);
+            fputs("<table border='1' cellborder='1'>\n", report);
+            fputs("<tr>\n", report);
+            cout<<"hola"<<endl;
+            //MBR
+            fputs("<td rowspan=\"2\" bgcolor =\"#dd8703\" >MBR</td>\n", report);
+            int inicio = sizeof(MBR),fin = sizeof(MBR)-1;
+            Partition dataPart;
+            for(int i = 0; i<4;i++){
+                int partition = 0;
+                if(dataMBR->mbr_partition_1.part_status[0] != '-'){
+                    partition = 1;
+                    dataPart = dataMBR->mbr_partition_1;
+                }else if(dataMBR->mbr_partition_2.part_status[0] != '-'){
+                    partition = 2;
+                    dataPart = dataMBR->mbr_partition_2;
+                }else if(dataMBR->mbr_partition_3.part_status[0] != '-'){
+                    partition = 3;
+                    dataPart = dataMBR->mbr_partition_3;
+                }else if(dataMBR->mbr_partition_4.part_status[0] != '-'){
+                    partition = 4;
+                    dataPart = dataMBR->mbr_partition_4;
+                }
+                if(partition == i+1){
+                    if(dataPart.part_type[0] == 'P'){
+                        fin = dataPart.part_start;
+                        if(fin-inicio>0){
+                            //Espacio libre
+                            fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>", report);
+                            int decimal = 0;
+                            decimal = ((fin-inicio)*100)/dataMBR->mbr_tamano;
+                            fprintf(report, "%.2f",(float)decimal);
+                            fputs("%</td>\n", report);
+                        }
+                        inicio = dataPart.part_start+dataPart.part_s;
+                        //PARTICION PRIMARIA
+                        fputs("<td rowspan=\"2\" bgcolor =\"#50b104\" >Primaria <br/>",report);
+                        int decimal = 0;
+                        decimal = (dataPart.part_s*100)/dataMBR->mbr_tamano;
+                        fprintf(report, "%.2f",(float)decimal);
+                        fputs("%</td>\n", report);
+                    }
+                    if(dataPart.part_type[0] == 'E'){
+                        fin = dataPart.part_start;
+                        if(fin-inicio>0){
+                            //Espacio libre
+                            fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
+                            int decimal = 0;
+                            decimal = ((fin-inicio)*100)/dataMBR->mbr_tamano;
+                            fprintf(report, "%.2f",(float)decimal);
+                            fputs("%</td>\n", report);
+                        }
+                        inicio = dataPart.part_start+dataPart.part_s;
+                         //PARTICION EXTENDIDA
+                        fputs("<td>\n", report);
+                        EBR *primero;
+                        fseek(disk,dataPart.part_start,SEEK_SET);
+                        fread(primero,sizeof(EBR),1,disk);
+                        fputs("<table border = \"1\" cellborder=\"1\" bgcolor=\"#da3a85\">\n", report);
+                        fputs("<tr>\n", report);
+                        bool bandera = true;
+                        int inicioEBR = dataPart.part_start;
+                        int finalEBR = 0;
+                        while(bandera){
+                            finalEBR = primero->part_start-sizeof(EBR);
+                            if(finalEBR-inicioEBR > 0){
+                                //ESPACIO LIBRE
+                                fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">\n", report);
+                                fprintf(report, "%.2f",((finalEBR-inicioEBR)*100)/dataMBR->mbr_tamano);
+                                fputs("%</td>\n", report);
+                            }
+                            inicioEBR = primero->part_start+primero->part_s;
+                            if(primero->part_status == "-"){
+                                fputs("<td bgcolor=\"#eeeeee\">EBR</td>\n", report);
+                            }
+                            fputs("<td bgcolor=\"#eeeeee\">", report);
+                            if(primero->part_status!="-"){
+                                fputs("Libre <br/>",report);
+                            }else{
+                                fputs("Lógica <br/>",report);
+                            }
+                            fprintf(report, "%.2f",(primero->part_s*100)/dataMBR->mbr_tamano);
+                            fputs("%</td>\n",report);
+                            if(primero->part_next !=  -1){
+                                primero = leerEBR(primero->part_next,path);
+                            }else{
+                                bandera = false;
+                            }
+                            if(dataMBR->mbr_tamano-inicioEBR>0){
+                                //Espacio libre
+                                fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
+                                fprintf(report, "%.2f",((((dataPart.part_start+dataPart.part_s)-inicioEBR)*100)/dataMBR->mbr_tamano));
+                                fputs("%</td>\n", report);
+                            }
+                            fputs("</tr>\n", report);
+                            fputs("</table>\n", report);
+                        }
+                        fputs("</td>\n", report);
+                    }
+                }
+            }
+            if(dataMBR->mbr_tamano > 0){
+                 //ESPACIO LIBRE
+                fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
+                fprintf(report, "%.2f", (((dataMBR->mbr_tamano-inicio)*100)/dataMBR->mbr_tamano));
+                fputs("%</td>\n", report);
+            }
+            fputs("</tr>\n", report);
+            fputs("</table>\n", report);
+            fputs(">];\n", report);
+
+            fputs("}\n",report);
+            //cerrando stream
+            fclose (report);
+//            string pathString(path_report);
+            string command = "dot -Tpng report_disk.dot -o \""+ruta+"\"";//+"/report_disk.png";
+            system(command.c_str());
+            cout<<"Reporte de disco creado...\n";
+        }
+    }
+
+}

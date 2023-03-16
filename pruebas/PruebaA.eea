@@ -1,0 +1,52 @@
+#Prueba MIA Proyecto 1A
+#execute >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/PruebaA.eea
+
+#CREACION DE DISCOS
+
+mkdisk >size=75 >unit=M >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D1A.dsk                #disco con primer ajuste
+mkdisk >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk >fit=BF >size=10240     #tamaño de 10mb
+mkdisk >size=101 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=WF                #debe crear disco en MB
+mkdisk >size=1 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/Eliminar1A.dsk
+mkdisk >size=1 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/Eliminar2A.dsk
+
+#ELIMINACION DE DISCOS
+
+rmdisk >path=/home/aeliminardisco/no_existo.dsk             #debe de mostrar error por no existir
+rmdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/Eliminar1A.dsk   #verificar mensaje de eliminacion darle si
+rmdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/Eliminar 2A.dsk   #verificar mensaje de eliminacion darle si
+
+#CREACION DE PARTICIONES PRIMARIAS Y EXTENDIDAS
+
+#Crear particiones d1.dsk
+fdisk >type=P >unit=M >name=Part1 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D1A.dsk
+fdisk >type=P >unit=M >name=Part2 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D1A.dsk
+fdisk >type=P >unit=M >name=Part3 >size=20 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D1A.dsk
+
+#Crear particiones D2A.dsk
+#fdisk >type=L >unit=M >name=Part6 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk         #error, no existe extendida
+fdisk >type=E >unit=M >name=Part1 >size=9 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk >fit=FF  #ocupa los 10MB del disco
+fdisk >type=E >unit=M >name=Part7 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk >fit=WF  #error, ya existe una extendida
+#fdisk >type=L >unit=B >name=Part2 >size=1024 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk
+#fdisk >type=L >unit=B >name=Part3 >size=1024 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk
+#fdisk >type=L >unit=B >name=Part4 >size=1024 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk
+
+#Crear particiones D3A.dsk
+#fdisk >type=L >unit=M >name=Part1 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF
+fdisk >type=P >unit=M >name=Part2 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF
+fdisk >type=P >unit=M >name=Part3 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF
+fdisk >type=P >unit=M >name=Part4 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF
+fdisk >type=P >unit=M >name=Part1 >size=25 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF      #error, ya existen 4 particiones
+#fdisk >type=L >unit=K >name=Part5 >size=1024 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF
+#fdisk >type=L >unit=K >name=Part6 >size=1024 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >fit=BF
+
+#MOUNT CARNET 2017000381
+mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D1A.dsk >name=Part1 #81D1A
+mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.dsk >name=Part1 #721D2A
+mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >name=Part1 #721D3A
+
+#reporte disk del estado inicial de las particiones
+rep >id=811D1A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/ >name=mbr
+rep >id=812D2A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.jpg >name=mbr
+rep >id=814D3A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.jpg >name=mbr
+
+pause
