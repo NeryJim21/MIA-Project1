@@ -123,7 +123,7 @@ struct Journaling{
     char j_fecha[80];
 };
 
-particionMontada montada[10]; //Array para los discos montados
+//particionMontada montada[10]; //Array para los discos montados
 
 
 //Prototipo de funciones
@@ -856,6 +856,7 @@ void makeExtended(string path, Partition ptn){
     bool extendida = false;
     //Obteniendo tamaño del MBR
     pivSize = sizeof(MBR)+1;
+    cout<<"szMBR"<<pivSize<<endl;
     //Buscando partición libre
     FILE * disk;
     disk = fopen(path.c_str(),"rb+");
@@ -880,7 +881,7 @@ void makeExtended(string path, Partition ptn){
         cout<<"Particion libre"<<partition<<endl;
         //Primera partición en el disco
         if(partition == 1){
-            pivSize += ptn.part_s;
+            //pivSize += ptn.part_s;
             ptn.part_start = pivSize;
             dataMBR.mbr_partition_1 = ptn;
         }else if(partition == 2){
@@ -901,6 +902,7 @@ void makeExtended(string path, Partition ptn){
         fseek(disk,0,SEEK_SET);
         fwrite(&dataMBR,sizeof(dataMBR),1,disk);
         cout<<"MBR actualizado..."<<endl;
+        cout<<"dataMBR..."<<sizeof(dataMBR)<<endl;
 
         //Creando EBR inicial
         EBR dataEBR;
@@ -920,6 +922,8 @@ void makeExtended(string path, Partition ptn){
         fseek(disk,pivSize,SEEK_SET);
         fwrite(&dataEBR,sizeof(dataEBR),1,disk);
         cout<<"EBR actualizado..."<<endl;
+        cout<<"EscribiendoEBR"<<pivSize<<endl;
+        cout<<"siguiente"<<dataEBR.part_next<<endl;
         fclose(disk);
 
     }
@@ -1016,6 +1020,7 @@ void makeLogic(string path, EBR ebr){
 }
 
 //Comando Mount
+particionMontada montada[10]; //Array para los discos montados
 template <typename Map>
 void commandMount(Map& parametros){
     //Variables para parametros
@@ -1066,7 +1071,7 @@ void commandMount(Map& parametros){
     //Viendo si existe espacio para montar disco
     int i = 0;
     for(i = 0; i<10;i++){
-        if(montada[i].estado==0||montada[i].path==path){
+        if(montada[i].estado==0/*||montada[i].path==path*/){
             break;
         }
     }
@@ -1167,10 +1172,13 @@ void mostrarMount(){
     for(int i = 0; i<10;i++){
         bool isMount = false;
         if(montada[i].type != -1){
-            cout<<" - - - - - - - - - - P A R T I C I O N E S  M O N T A D A S - - - - - - - - -"<<endl;
+            cout<<"\n - - - - - - - - - - P A R T I C I O N E S  M O N T A D A S - - - - - - - - -"<<endl;
             cout<<"Nombre: "<<montada[i].nombre<<endl;
             cout<<"ID: "<<montada[i].id<<endl;
             cout<<"Tipo: "<<montada[i].type<<endl;
+            cout<<"Status: "<<montada[i].estado<<endl;
+            cout<<"Numero: "<<montada[i].numero<<endl;
+            cout<<"Path: "<<montada[i].path<<endl;
             isMount = true;
         }
         if(i==10 && isMount == false){
@@ -1445,7 +1453,7 @@ void commandRep(Map& parametros){
 
     int montID = 0;
     montID = findinID(id);
-    cout<<"montID:"<<montID<<endl;
+    //cout<<"montID:"<<montID<<endl;
     if(montID == -1){
         cout<<"La partición: "<<id<<" No ha sido montada"<<endl;
         alerta = true;
@@ -1727,10 +1735,10 @@ void reporteDisk(string path, string ruta){
             fputs("label=<\n", report);
             fputs("<table border='1' cellborder='1'>\n", report);
             fputs("<tr>\n", report);
-            cout<<"hola"<<endl;
+            
             //MBR
             fputs("<td rowspan=\"2\" bgcolor =\"#dd8703\" >MBR</td>\n", report);
-            int inicio = sizeof(MBR),fin = sizeof(MBR)-1;
+            int inicio = sizeof(MBR),fin = sizeof(MBR)-2;
             Partition dataPart;
             for(int i = 0; i<4;i++){
                 int partition = 0;
@@ -1749,7 +1757,7 @@ void reporteDisk(string path, string ruta){
                 }
                 if(partition == i+1){
                     if(dataPart.part_type[0] == 'P'){
-                        fin = dataPart.part_start;
+                        inicio = dataPart.part_start;
                         if(fin-inicio>0){
                             //Espacio libre
                             fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>", report);
@@ -1758,16 +1766,16 @@ void reporteDisk(string path, string ruta){
                             fprintf(report, "%.2f",(float)decimal);
                             fputs("%</td>\n", report);
                         }
-                        inicio = dataPart.part_start+dataPart.part_s;
+                        fin = dataPart.part_start+dataPart.part_s;
                         //PARTICION PRIMARIA
-                        fputs("<td rowspan=\"2\" bgcolor =\"#50b104\" >Primaria <br/>",report);
+                        fputs("<td rowspan=\"2\" bgcolor =\"#50b104\" >Primary <br/>",report);
                         int decimal = 0;
                         decimal = (dataPart.part_s*100)/dataMBR->mbr_tamano;
                         fprintf(report, "%.2f",(float)decimal);
                         fputs("%</td>\n", report);
                     }
                     if(dataPart.part_type[0] == 'E'){
-                        fin = dataPart.part_start;
+                        inicio = dataPart.part_start;
                         if(fin-inicio>0){
                             //Espacio libre
                             fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
@@ -1776,46 +1784,48 @@ void reporteDisk(string path, string ruta){
                             fprintf(report, "%.2f",(float)decimal);
                             fputs("%</td>\n", report);
                         }
-                        inicio = dataPart.part_start+dataPart.part_s;
+                        fin = dataPart.part_start+dataPart.part_s;
                          //PARTICION EXTENDIDA
                         fputs("<td>\n", report);
-                        EBR *primero;
-                        fseek(disk,dataPart.part_start,SEEK_SET);
-                        fread(primero,sizeof(EBR),1,disk);
+                        int pivEBR = sizeof(MBR)+2;
+                        EBR *primero = leerEBR(pivEBR,path);
                         fputs("<table border = \"1\" cellborder=\"1\" bgcolor=\"#da3a85\">\n", report);
                         fputs("<tr>\n", report);
                         bool bandera = true;
-                        int inicioEBR = dataPart.part_start;
+                        int inicioEBR = primero->part_start;
                         int finalEBR = 0;
                         while(bandera){
-                            finalEBR = primero->part_start-sizeof(EBR);
+                            //finalEBR = primero->part_start-sizeof(EBR);
                             if(finalEBR-inicioEBR > 0){
                                 //ESPACIO LIBRE
                                 fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">\n", report);
                                 fprintf(report, "%.2f",((finalEBR-inicioEBR)*100)/dataMBR->mbr_tamano);
                                 fputs("%</td>\n", report);
                             }
-                            inicioEBR = primero->part_start+primero->part_s;
-                            if(primero->part_status == "-"){
+                            finalEBR = primero->part_start+primero->part_s;
+                            if(primero->part_status[0] == '-'){
                                 fputs("<td bgcolor=\"#eeeeee\">EBR</td>\n", report);
-                            }
-                            fputs("<td bgcolor=\"#eeeeee\">", report);
-                            if(primero->part_status!="-"){
-                                fputs("Libre <br/>",report);
                             }else{
-                                fputs("Lógica <br/>",report);
+                                fputs("<td bgcolor=\"#eeeeee\">", report);
+                                if(primero->part_status[0] != '-'){
+                                    fputs("Libre1 <br/>",report);
+                                }else{
+                                    fputs("Lógica <br/>",report);
+                                }
+                                fprintf(report, "%.2f",(float)(primero->part_s*100)/dataMBR->mbr_tamano);
+                                fputs("%</td>\n",report);
                             }
-                            fprintf(report, "%.2f",(primero->part_s*100)/dataMBR->mbr_tamano);
-                            fputs("%</td>\n",report);
                             if(primero->part_next !=  -1){
+                                cout<<"Siguiente: "<<primero->part_next<<endl;
+                                commandPause();
                                 primero = leerEBR(primero->part_next,path);
                             }else{
                                 bandera = false;
                             }
                             if(dataMBR->mbr_tamano-inicioEBR>0){
                                 //Espacio libre
-                                fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
-                                fprintf(report, "%.2f",((((dataPart.part_start+dataPart.part_s)-inicioEBR)*100)/dataMBR->mbr_tamano));
+                                fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre2<br/>\n", report);
+                                fprintf(report, "%.2f",(float)((((dataPart.part_start+dataPart.part_s)-inicioEBR)*100)/dataMBR->mbr_tamano));
                                 fputs("%</td>\n", report);
                             }
                             fputs("</tr>\n", report);
@@ -1825,10 +1835,13 @@ void reporteDisk(string path, string ruta){
                     }
                 }
             }
-            if(dataMBR->mbr_tamano > 0){
+            //fin = dataMBR->mbr_tamano;
+            cout<<dataMBR->mbr_tamano<<endl;
+            cout<<dataPart.part_s<<endl;
+            if(dataMBR->mbr_tamano-dataPart.part_s > 0){
                  //ESPACIO LIBRE
                 fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
-                fprintf(report, "%.2f", (((dataMBR->mbr_tamano-inicio)*100)/dataMBR->mbr_tamano));
+                fprintf(report, "%.2f", (float)(((dataMBR->mbr_tamano-dataPart.part_s)*100)/dataMBR->mbr_tamano));
                 fputs("%</td>\n", report);
             }
             fputs("</tr>\n", report);

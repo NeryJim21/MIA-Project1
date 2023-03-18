@@ -5,10 +5,17 @@ label=<
 <table border='1' cellborder='1'>
 <tr>
 <td rowspan="2" bgcolor ="#dd8703" >MBR</td>
-<td rowspan="2" bgcolor = "#3ac9da">Libre<br/>-21.00%</td>
-<td rowspan="2" bgcolor ="#50b104" >Primaria <br/>-21.00%</td>
+<td>
+<table border = "1" cellborder="1" bgcolor="#da3a85">
+<tr>
+<td bgcolor="#eeeeee">EBR</td>
+<td rowspan="2" bgcolor = "#3ac9da">Libre2<br/>
+30.00%</td>
+</tr>
+</table>
+</td>
 <td rowspan="2" bgcolor = "#3ac9da">Libre<br/>
--21.00%</td>
+70.00%</td>
 </tr>
 </table>
 >];
