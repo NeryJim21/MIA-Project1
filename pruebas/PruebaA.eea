@@ -45,8 +45,8 @@ mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Proje
 mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.dsk >name=Part1 #721D3A
 
 #reporte disk del estado inicial de las particiones
-rep >id=811D1A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/ >name=mbr
-rep >id=812D2A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D2A.jpg >name=mbr
-rep >id=814D3A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/D3A.jpg >name=mbr
+rep >id=811D1A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/ >name=disk
+rep >id=812D2A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/ >name=disk
+rep >id=814D3A >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas/ >name=disk
 
 pause

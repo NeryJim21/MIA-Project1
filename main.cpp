@@ -960,7 +960,7 @@ void makeLogic(string path, EBR ebr){
         cout<<"pivStart:"<<pivStart<<endl;
         if(dataMBR.mbr_partition_1.part_type[0] == 'E'){
             sizeExtend = dataMBR.mbr_partition_1.part_s;
-            pivStart = dataMBR.mbr_partition_1.part_start;
+            pivStart = sizeof(MBR)+1;
             cout<<"uno"<<endl;
         }else if(dataMBR.mbr_partition_2.part_type[0] == 'E'){
             sizeExtend = dataMBR.mbr_partition_2.part_s;
@@ -976,44 +976,42 @@ void makeLogic(string path, EBR ebr){
             cout<<"cuatro"<<endl;
         }
         //Buscando EBR inicial
-        EBR dataEBR;
-        int sizeEBR = sizeof(EBR);
-        int pivSize = 0, acumulado = 0;
+        int acumulado =  0;
         bool alerta = false;
-        cout<<"pivStart:"<<pivStart<<endl;
-        fseek(disk,pivStart+1,SEEK_SET);
-        fread(&dataEBR,sizeof(EBR),1,disk);
-        cout<<"part_next:"<<dataEBR.part_next<<"<-"<<endl;
-        while(!feof(disk)){
-            if(dataEBR.part_next == -1){
-                //cout<<"hola"<<endl;
-                start = dataEBR.part_start;
-                pivSize = dataEBR.part_s;
-                //Validando que la partición lógica quepa en la extendida
-                if(ebr.part_s <= (sizeExtend-acumulado)){
-                    start += sizeEBR+pivSize;
-                    dataEBR.part_next = start;   
-                }else{
-                    alerta = true;
-                    cout<<"No hay espacio suficiente para crear la partición lógica..."<<endl;
-                }
-                cout<<"ebr:"<<ebr.part_s<<endl;
-                cout<<"ext:"<<sizeExtend<<endl;
-                cout<<"str:"<<pivStart<<endl;
-                break;
-            }else{
-                acumulado += dataEBR.part_s;
-            }
+        EBR *dataEBR = leerEBR(pivStart+1,path);
+        while(dataEBR->part_next  != -1){
+            //Siguiente EBR
+            acumulado = dataEBR->part_s;
+            dataEBR = leerEBR(dataEBR->part_next,path);
         }
-        //Escribe partición lógica
-        if(alerta == false){
-            //Terminando de llenar valores de EBR
-            ebr.part_start = start;
-            //Ubicandonos en la posición de nueva partición
+        //Actualizando EBR y creando uno nuevo
+        start = dataEBR->part_start+dataEBR->part_s+sizeof(EBR);
+        //Validando que la partición quepa en la extendida
+        if(dataEBR->part_s <= (sizeExtend-acumulado)){
+            dataEBR->part_next = start;
             fseek(disk,start,SEEK_SET);
-            fwrite(&ebr,sizeof(EBR),1,disk);
-            cout<<"Partición lógica creada"<<endl;
-            cout<<"Start:"<<start<<endl;
+            fwrite(dataEBR,sizeof(dataEBR),1,disk);
+            //break;
+        }else{
+            cout<<"No hay espacio suficiente para crear la partición lógica..."<<endl;
+            alerta = true;
+        }
+        //Escribiendo nueva partición logica
+        if(alerta != true){
+            char pivFit = ebr.part_fit[0];
+            char pivStatus = ebr.part_status[0];
+            string pivName = ebr.part_name;
+            int pivS = ebr.part_s;
+            dataEBR->part_s = pivS;
+            dataEBR->part_start = start;
+            dataEBR->part_fit[0] = pivFit;
+            dataEBR->part_status[0] = pivStatus;
+            strcpy(dataEBR->part_name,pivName.c_str());
+            dataEBR->part_next = -1;
+            fseek(disk,start,SEEK_SET);
+            fwrite(dataEBR,sizeof(dataEBR),1,disk);
+            cout<<"Partición lógica creada..."<<endl;
+            cout<<dataEBR->part_name<<endl;
         }
         fclose(disk);
     }
