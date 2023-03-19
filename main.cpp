@@ -1160,8 +1160,9 @@ int findinID(string id){
 }
 //Comando Pause
 void commandPause(){
-    cout<<"Presione una tecla para continuar..."<<endl;
-    getchar();
+    //cout<<"Presione una tecla para continuar..."<<endl;
+    //getchar();
+    system("read -r -p \"Presiona una tecla para continuar...\" key");
 }
 
 //Mostrando particiones montadas
@@ -1492,7 +1493,7 @@ void commandRep(Map& parametros){
 }
 
 void reporteMBR(string path, string ruta){
-    MBR *dataMBR;
+    MBR *dataMBR = (MBR*)malloc(sizeof(MBR));
     FILE *disk = fopen(path.c_str(),"rb+");
     bool alerta = false;
     if(disk != NULL){
@@ -1612,12 +1613,11 @@ void reporteMBR(string path, string ruta){
             fputs(">];\n\n", report);
 
             //Reporte EBR
-            int i = 0;
+            int i = 0,pivP = 0;
             if(findingExtended(path)==true){
-                EBR *dataEBR;
                 int inicio=0;
                 if(dataMBR->mbr_partition_1.part_type[0]=='E'){
-                    inicio = dataMBR->mbr_partition_1.part_start;
+                    inicio = sizeof(MBR)+2;
                 }else if(dataMBR->mbr_partition_2.part_type[0]=='E'){
                     inicio = dataMBR->mbr_partition_2.part_start;
                 }else if(dataMBR->mbr_partition_3.part_type[0]=='E'){
@@ -1625,31 +1625,29 @@ void reporteMBR(string path, string ruta){
                 }else if(dataMBR->mbr_partition_4.part_type[0]=='E'){
                     inicio = dataMBR->mbr_partition_4.part_start;
                 }
+                EBR *dataEBR =leerEBR(inicio,path);
+                cout<<"next:"<<dataEBR->part_next<<endl;
+                commandPause();
+                bool bandera = true;
                 if(inicio != 0){
-                    FILE *disk = fopen(path.c_str(),"rb+");
-                    if(disk != NULL){
-                        fseek(disk,inicio,SEEK_SET);
-                        fread(dataEBR,sizeof(EBR),1,disk);
-                        fclose(disk);
-                        while(dataEBR != NULL){
-                            reportEBR(dataEBR,report,i);
-                            if(dataEBR->part_next!=-1){
-                                dataEBR = leerEBR(dataEBR->part_next,path);
-                            }else{
-                                dataEBR = NULL;
-                            }
-                            i++;
+                    
+                    while(bandera){
+                        reportEBR(dataEBR,report,i);
+                        if(dataEBR->part_next!=-1){
+                            dataEBR = leerEBR(dataEBR->part_next,path);
+                        }else{
+                            bandera = false;
                         }
-                        fputs("}\n",report);
-                        //cerrando stream
-                        fclose (report);
-                        string pathString(ruta);
-                        string command = "dot -Tpng report_mbr.dot -o \""+pathString+"\"";//+"/report_mbr.png";
-                        system(command.c_str());
-                        cout<<"Reporte de MBR creado...\n";
-                    }else{
-                        cout<<"Error al abrir disco"<<endl;
+                        i++;
                     }
+                    fputs("}\n",report);
+                    //cerrando stream
+                    fclose (report);
+                    string pathString(ruta);
+                    string command = "dot -Tpng report_mbr.dot -o \""+pathString+"\"";//+"/report_mbr.png";
+                    system(command.c_str());
+                    cout<<"Reporte de MBR creado...\n";
+                    
                 }
             }else{
                 fputs("}\n",report);
@@ -1675,7 +1673,7 @@ void reportEBR(EBR *ebr,FILE *myFile,int index){
     fputs("</td></tr>\n",myFile);
     //PART FIT
     fputs("<tr><td bgcolor=\"#fcc8c8\">part_fit</td><td bgcolor=\"#fcc8c8\">",myFile);
-    fprintf(myFile, "%c", ebr->part_fit);
+    fprintf(myFile, "%c", ebr->part_fit[0]);
     fputs("</td></tr>\n",myFile);
     //PART START
     fputs("<tr><td bgcolor=\"#fcc8c8\">part_start</td><td bgcolor=\"#fcc8c8\">",myFile);
