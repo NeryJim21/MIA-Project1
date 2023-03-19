@@ -204,10 +204,11 @@ ______________________________________
 PRUEBAS REPORTES
 
 mkdisk >size=10 >unit=K >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk
-fdisk >size=3 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Primary
+fdisk >size=8 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Primary
 mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Primary
 fdisk >type=E >size=3 >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Extended
 mount >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >name=Extended
 fdisk >path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/Disco1.dsk >type=L >size=1 >name=Logic
 
-rep >id=812Disco1 >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/ >name=disk
+rep >id=811Disco1 >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas >name=mbr
+rep >id=812Disco1 >Path=/home/n21/Documentos/USAC/MIA/LAB/PROYECTOS/PROYECTO1/repo/MIA-Project1/pruebas >name=disk

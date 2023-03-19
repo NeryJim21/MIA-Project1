@@ -123,9 +123,6 @@ struct Journaling{
     char j_fecha[80];
 };
 
-//particionMontada montada[10]; //Array para los discos montados
-
-
 //Prototipo de funciones
 void menu();
 void comandos(string entrada);
@@ -198,7 +195,6 @@ void menu(){
         }
         comandos(entrada);
     }
-    //menu();
 }
 
 //Función para redireccionar comandos
@@ -209,7 +205,6 @@ void comandos(string entrada){
     string comment  = "";
     int estado = 0;
     entrada += ' ';
-    //bool com = false;
     map<string, string> parametros; //Mapa para almacenar parametros y su valor
 
     //Recirre entrada y separa los comandos
@@ -222,7 +217,6 @@ void comandos(string entrada){
                 estado = 1;
             }
             else if(entrada[i] == '#'){
-                //com = true;
                 estado = 6;
             }
         }
@@ -489,7 +483,6 @@ void commandMkdisk(Map& parametros){
     else{
         strcpy(disco.dsk_fit,fit.c_str());
     }
-    cout<<"Fit: "<<fit<<endl;
     
     //Inicializando particiones en -1
     string partStatus = "-";
@@ -856,7 +849,6 @@ void makeExtended(string path, Partition ptn){
     bool extendida = false;
     //Obteniendo tamaño del MBR
     pivSize = sizeof(MBR)+1;
-    cout<<"szMBR"<<pivSize<<endl;
     //Buscando partición libre
     FILE * disk;
     disk = fopen(path.c_str(),"rb+");
@@ -881,7 +873,6 @@ void makeExtended(string path, Partition ptn){
         cout<<"Particion libre"<<partition<<endl;
         //Primera partición en el disco
         if(partition == 1){
-            //pivSize += ptn.part_s;
             ptn.part_start = pivSize;
             dataMBR.mbr_partition_1 = ptn;
         }else if(partition == 2){
@@ -902,8 +893,7 @@ void makeExtended(string path, Partition ptn){
         fseek(disk,0,SEEK_SET);
         fwrite(&dataMBR,sizeof(dataMBR),1,disk);
         cout<<"MBR actualizado..."<<endl;
-        cout<<"dataMBR..."<<sizeof(dataMBR)<<endl;
-
+        
         //Creando EBR inicial
         EBR dataEBR;
         string statusEbr = "-";
@@ -922,8 +912,6 @@ void makeExtended(string path, Partition ptn){
         fseek(disk,pivSize,SEEK_SET);
         fwrite(&dataEBR,sizeof(dataEBR),1,disk);
         cout<<"EBR actualizado..."<<endl;
-        cout<<"EscribiendoEBR"<<pivSize<<endl;
-        cout<<"siguiente"<<dataEBR.part_next<<endl;
         fclose(disk);
 
     }
@@ -957,23 +945,18 @@ void makeLogic(string path, EBR ebr){
         int pivStart = 0, start = 0;
         fseek(disk,0,SEEK_SET);
         fread(&dataMBR,sizeof(MBR),1,disk);
-        cout<<"pivStart:"<<pivStart<<endl;
         if(dataMBR.mbr_partition_1.part_type[0] == 'E'){
             sizeExtend = dataMBR.mbr_partition_1.part_s;
             pivStart = sizeof(MBR)+1;
-            cout<<"uno"<<endl;
         }else if(dataMBR.mbr_partition_2.part_type[0] == 'E'){
             sizeExtend = dataMBR.mbr_partition_2.part_s;
             pivStart = dataMBR.mbr_partition_2.part_start;
-            cout<<"dos"<<endl;
         }else if(dataMBR.mbr_partition_3.part_type[0] == 'E'){
             sizeExtend = dataMBR.mbr_partition_3.part_s;
             pivStart = dataMBR.mbr_partition_3.part_start;
-            cout<<"tres"<<endl;
         }else if(dataMBR.mbr_partition_4.part_type[0] == 'E'){
             sizeExtend = dataMBR.mbr_partition_4.part_s;
             pivStart = dataMBR.mbr_partition_4.part_start;
-            cout<<"cuatro"<<endl;
         }
         //Buscando EBR inicial
         int acumulado =  0;
@@ -1089,7 +1072,6 @@ void commandMount(Map& parametros){
             nameD.pop_back();
         }
         
-        cout<<"Disco:"<<nameD<<endl;
         //ID para la partición
         id = id + to_string(partition) + nameD;
         cout<<"Montando la partición: "<<id<<endl;
@@ -1160,8 +1142,6 @@ int findinID(string id){
 }
 //Comando Pause
 void commandPause(){
-    //cout<<"Presione una tecla para continuar..."<<endl;
-    //getchar();
     system("read -r -p \"Presiona una tecla para continuar...\" key");
 }
 
@@ -1260,7 +1240,6 @@ void commandMkfs(Map& parametros){
                 fin = inicio + pivTam;
             }
             //Escribiendo el formato
-            //string buffer "/0";
             double sizeN;
             int contInode,contBlock;
             SB dataSB;
@@ -1452,7 +1431,6 @@ void commandRep(Map& parametros){
 
     int montID = 0;
     montID = findinID(id);
-    //cout<<"montID:"<<montID<<endl;
     if(montID == -1){
         cout<<"La partición: "<<id<<" No ha sido montada"<<endl;
         alerta = true;
@@ -1510,7 +1488,6 @@ void reporteMBR(string path, string ruta){
         ruta += "reporte_mbr.dot";
         report = fopen(ruta.c_str(),"w+");
         if(report != NULL){
-            //fseek(report,0,SEEK_SET);
             fputs("digraph {\ntbl [\nshape=plaintext\n label=<\n", report);
             fputs("<table border='0' cellborder='1' cellspacing='0'>\n",report);
             fputs("<tr><td colspan=\"3\">Disk1</td></tr>\n",report);
@@ -1615,19 +1592,17 @@ void reporteMBR(string path, string ruta){
             //Reporte EBR
             int i = 0,pivP = 0;
             if(findingExtended(path)==true){
-                int inicio=0;
+                int inicio=sizeof(MBR)+1;
                 if(dataMBR->mbr_partition_1.part_type[0]=='E'){
-                    inicio = sizeof(MBR)+2;
+                    inicio += 1;
                 }else if(dataMBR->mbr_partition_2.part_type[0]=='E'){
-                    inicio = dataMBR->mbr_partition_2.part_start;
+                    inicio += dataMBR->mbr_partition_1.part_s+1;
                 }else if(dataMBR->mbr_partition_3.part_type[0]=='E'){
-                    inicio = dataMBR->mbr_partition_3.part_start;
+                    inicio = dataMBR->mbr_partition_1.part_s+dataMBR->mbr_partition_2.part_s+1;
                 }else if(dataMBR->mbr_partition_4.part_type[0]=='E'){
-                    inicio = dataMBR->mbr_partition_4.part_start;
+                    inicio = dataMBR->mbr_partition_1.part_s+dataMBR->mbr_partition_2.part_s+dataMBR->mbr_partition_3.part_s+1;
                 }
                 EBR *dataEBR =leerEBR(inicio,path);
-                cout<<"next:"<<dataEBR->part_next<<endl;
-                commandPause();
                 bool bandera = true;
                 if(inicio != 0){
                     
@@ -1783,7 +1758,16 @@ void reporteDisk(string path, string ruta){
                         fin = dataPart.part_start+dataPart.part_s;
                          //PARTICION EXTENDIDA
                         fputs("<td>\n", report);
-                        int pivEBR = sizeof(MBR)+2;
+                        int pivEBR = sizeof(MBR)+1;
+                        if(partition == 1){
+                            pivEBR += 1;
+                        }else if(partition == 2){
+                            pivEBR += dataMBR->mbr_partition_1.part_s+1;
+                        }else if(partition == 3){
+                            pivEBR = dataMBR->mbr_partition_1.part_s+dataMBR->mbr_partition_2.part_s+1;
+                        }else if(partition == 4){
+                            pivEBR = dataMBR->mbr_partition_1.part_s+dataMBR->mbr_partition_2.part_s+dataMBR->mbr_partition_3.part_s+1;
+                        }
                         EBR *primero = leerEBR(pivEBR,path);
                         fputs("<table border = \"1\" cellborder=\"1\" bgcolor=\"#da3a85\">\n", report);
                         fputs("<tr>\n", report);
@@ -1791,7 +1775,6 @@ void reporteDisk(string path, string ruta){
                         int inicioEBR = primero->part_start;
                         int finalEBR = 0;
                         while(bandera){
-                            //finalEBR = primero->part_start-sizeof(EBR);
                             if(finalEBR-inicioEBR > 0){
                                 //ESPACIO LIBRE
                                 fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">\n", report);
@@ -1812,8 +1795,6 @@ void reporteDisk(string path, string ruta){
                                 fputs("%</td>\n",report);
                             }
                             if(primero->part_next !=  -1){
-                                cout<<"Siguiente: "<<primero->part_next<<endl;
-                                commandPause();
                                 primero = leerEBR(primero->part_next,path);
                             }else{
                                 bandera = false;
@@ -1831,9 +1812,6 @@ void reporteDisk(string path, string ruta){
                     }
                 }
             }
-            //fin = dataMBR->mbr_tamano;
-            cout<<dataMBR->mbr_tamano<<endl;
-            cout<<dataPart.part_s<<endl;
             if(dataMBR->mbr_tamano-dataPart.part_s > 0){
                  //ESPACIO LIBRE
                 fputs("<td rowspan=\"2\" bgcolor = \"#3ac9da\">Libre<br/>\n", report);
@@ -1847,8 +1825,7 @@ void reporteDisk(string path, string ruta){
             fputs("}\n",report);
             //cerrando stream
             fclose (report);
-//            string pathString(path_report);
-            string command = "dot -Tpng report_disk.dot -o \""+ruta+"\"";//+"/report_disk.png";
+            string command = "dot -Tpng report_disk.dot -o \""+ruta+"\"";
             system(command.c_str());
             cout<<"Reporte de disco creado...\n";
         }
